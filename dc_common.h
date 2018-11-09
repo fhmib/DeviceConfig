@@ -8,14 +8,26 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
+#include <assert.h>
 
-#define FILE_NAME "status.json"
+#define STATUS_PATH                 "status.json"
+#define INFO_PATH                   "info"
+#define NAME_LEN                    64
+#define MAX_NODE_CNT                32
 
-#define JSON_BRACKET                0
-#define JSON_NORMAL                 1
-#define JSON_ARRAY                  2
-#define JSON_STRING                 3
-#define JSON_CUSTOM1                4
+//#define JSON_BRACKET                0
+//#define JSON_NORMAL                 1
+//#define JSON_ARRAY                  2
+//#define JSON_STRING                 3
+//#define JSON_CUSTOM1                4
+
+typedef enum{
+    JSON_BRACKET,
+    JSON_NORMAL,
+    JSON_ARRAY,
+    JSON_STRING,
+    JSON_CUSTOM1,
+}JSON_TYPE;
 
 typedef struct _node_l node_l;
 typedef struct _node_s node_s;
@@ -30,14 +42,28 @@ typedef struct _node_s{
 
     char name[64];          //name of parameter
     char *pvalue;           //pointer to the value of parameter
-    int length;             //length of value
 
-    node_l *child_h;        //head of child
-    node_l *child_t;        //tail of child
+    node_l child_h;        //head of child
+    node_l child_t;        //tail of child
 }node_s;
 
-int gen_json(const char*);
+//struct for store local data
+typedef struct _data_s{
+    char name[64];
+    char *pvalue;
+    //int length;                     //length of value
+    char *(*pfunc)(char*, char);    //pointer to function reads/writes value of the parameter
+}data_s;
+
+int init_tree();
+void update_sig();
+void update_info();
+void update_dvlp();
+
+int gen_json(const char*, node_s*);
 void first_tree(FILE*, int, node_s*);
+node_s *create_node(int, const char*, const char*);
+void insert_node(node_s*, node_s*);
 
 
 
