@@ -234,8 +234,147 @@ void insert_node(node_s *dst, node_s *src)
     return ;
 }
 
+/*
+ * func:
+ *      delete a child node by name
+ * ret:
+ *      0:              success
+ *      other:          failure
+ */
+int del_node(node_s *node, char *name)
+{
+    int rval = 1;
+    node_l *p, *temp;
 
+    p = &node->child_h;
+    while(p->next != NULL){
+        if((0 == strcmp(p->next->pnode->name, name))){
+            temp = p->next;
+            p->next = temp->next;
+            free(temp);
+            temp = NULL;
+            rval = 0;
+            goto func_exit;
+        }else{
+            p = p->next;
+        }
+    }
 
+func_exit:
+    return rval;
+}
+
+/*
+ * func:
+ *      modify value according to the name
+ */
+void mod_node(node_s *node, const char *pvalue)
+{
+    int len;
+
+    len = strlen(pvalue);
+    if(len > (int)strlen(node->pvalue)){
+        free(node->pvalue);
+        node->pvalue = (char*)malloc(len + 1);
+        strcpy(node->pvalue, pvalue);
+    }else{
+        strcpy(node->pvalue, pvalue);
+    }
+
+    return ;
+}
+
+/*
+ * func:
+ *      search a node by name use Pre-order
+ * ret:
+ *      NULL:           failure
+ *      other:          pointer to node
+ */
+node_s *search_node(node_s *node, const char *name)
+{
+    node_l *p = NULL;
+    node_s *res;
+
+    if(0 == (strcmp(node->name, name))){
+        return node;
+    }else{
+        p = &node->child_h;
+        while(p->next != NULL){
+            res = search_node(p->next->pnode, name);
+            if(res == NULL){
+                p = p->next;
+            }else{
+                return res;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/*
+ * func:
+ *      read paramters from appointed file
+ *      it also can match specific parameter and return it
+ * ret:
+ *      pointer to the node of head or specific parameter, NULL means cannot find out the parameter
+ */
+rdata_s *read_json(const char *path, const char *option)
+{
+    FILE *fp;
+    char buf[256];
+    char *name, *value;
+    rdata_s *h = NULL;
+    rdata_s *t = NULL;
+
+    fp = fopen(path, "r");
+    while(NULL != fgets(buf, 256, fp)){
+        name = strtok(buf, "{[\t\n \"");
+        if(name == NULL) continue;
+        if(strlen(name) >= 64){
+            printf("name is too long\n");
+            continue;
+        }
+
+        if((value = strtok(NULL, "{[\t\n \"")) == NULL) continue;
+        if(0 != strcmp(value, ":")) continue;
+
+        value = strtok(NULL, "{[\t\n \"");
+        if(value == NULL) continue;
+
+        //printf("%s: %s\n", name, value);
+
+        if(option == NULL){
+            if(h == NULL){
+                h = t = (rdata_s*)malloc(sizeof(rdata_s));
+            }else{
+                t->next = (rdata_s*)malloc(sizeof(rdata_s));
+                t = t->next;
+            }
+            strcpy(t->name, name);
+            t->pvalue = (char*)malloc(strlen(value) + 1);
+            strcpy(t->pvalue, value);
+            t->next = NULL;
+        }else{
+            if(0 == strcmp(option, name)){
+                h = (rdata_s*)malloc(sizeof(rdata_s));
+                strcpy(h->name, name);
+                h->pvalue = (char*)malloc(strlen(value) + 1);
+                strcpy(h->pvalue, value);
+                h->next = NULL;
+                goto func_exit;
+            }else{
+                continue;
+            }
+        }
+    }
+
+func_exit:
+    if(fp != NULL) fclose(fp);
+
+    return h;
+}
 
 
 

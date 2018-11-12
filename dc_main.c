@@ -1,5 +1,14 @@
 #include "dc_common.h"
 
+//for status.json
+node_s *status_root;
+node_s *sflags;
+node_s *sstatus;
+node_s *sinformation;
+node_s *sdeveloper;
+node_s *ssigtable;
+node_s *snode_data[MAX_NODE_CNT];
+
 data_s info_t[] = {
     {"softwareVersion", NULL, NULL},
     {"protocolVersion", NULL, NULL},
@@ -25,19 +34,50 @@ data_s dvlp_t[] = {
 unsigned char sig_t[MAX_NODE_CNT][MAX_NODE_CNT];
 node_s *sigs[MAX_NODE_CNT];
 
-node_s *root;
-node_s *flags;
-node_s *status;
-node_s *information;
-node_s *developer;
-node_s *sigtable;
-node_s *rdata[MAX_NODE_CNT];
+//for config.json
+node_s *config_root;
+node_s *cflag;
+node_s *csettings;
+node_s *cmain;
+node_s *caudio;
+node_s *cdataport;
+node_s *croute;
+
+data_s main_t[] = {
+    {"nodeId", NULL, NULL},
+    {"nodeName", NULL, NULL},
+    {"meshId", NULL, NULL},
+    {"centreFreq", NULL, NULL},
+    {"chanBandwidth", NULL, NULL},
+    {"TX1Power", NULL, NULL},
+    {"TX2Power", NULL, NULL},
+    {"reduceMimo", NULL, NULL},
+    {"ipAddress", NULL, NULL},
+    {"ipMask", NULL, NULL},
+    {"ipGateway", NULL, NULL},
+};
+
+data_s audio_t[] = {
+    {"audioEnable", NULL, NULL},
+    {"audioHeadGain", NULL, NULL},
+    {"audioMicGain", NULL, NULL},
+    {"audioMuteLevel", NULL, NULL},
+};
+
+data_s port0_t[] = {
+    {"data0BaudRate", NULL, NULL},
+    {"data0Parity", NULL, NULL},
+    {"data0StopBits", NULL, NULL},
+    {"data0FlowControl", NULL, NULL},
+    {"data0Width", NULL, NULL},
+};
 
 int main(int argc, char *argv[])
 {
     init_tree();
 
-    gen_json(STATUS_PATH, root);
+    gen_json(STATUS_PATH, status_root);
+    gen_json(CONFIG_PATH, config_root);
 
     return 0;
 }
@@ -48,35 +88,35 @@ int init_tree()
     char buf[1024], temp[32];
     node_s *remote = create_node(JSON_ARRAY, "remoteStatus", NULL);
 
-    root = create_node(JSON_BRACKET, NULL, NULL);
-    flags = create_node(JSON_NORMAL, "flags", NULL);
-    status = create_node(JSON_NORMAL, "status", NULL);
-    sigtable = create_node(JSON_ARRAY, "sigQualityTable", NULL);
-    information = create_node(JSON_NORMAL, "information", NULL);
-    developer = create_node(JSON_NORMAL, "developer", NULL);
+    status_root = create_node(JSON_BRACKET, NULL, NULL);
+    sflags = create_node(JSON_NORMAL, "flags", NULL);
+    sstatus = create_node(JSON_NORMAL, "status", NULL);
+    ssigtable = create_node(JSON_ARRAY, "sigQualityTable", NULL);
+    sinformation = create_node(JSON_NORMAL, "information", NULL);
+    sdeveloper = create_node(JSON_NORMAL, "developer", NULL);
 
-    insert_node(root, flags);
-    insert_node(root, status);
-    insert_node(root, sigtable);
-    insert_node(root, information);
-    insert_node(root, developer);
+    insert_node(status_root, sflags);
+    insert_node(status_root, sstatus);
+    insert_node(status_root, ssigtable);
+    insert_node(status_root, sinformation);
+    insert_node(status_root, sdeveloper);
 
     //initialize flags
-    insert_node(flags, create_node(JSON_STRING, "online", "0"));
-    insert_node(flags, create_node(JSON_STRING, "default", "0"));
+    insert_node(sflags, create_node(JSON_STRING, "online", "0"));
+    insert_node(sflags, create_node(JSON_STRING, "default", "0"));
 
     //initialize remote status
-    insert_node(status, remote);
+    insert_node(sstatus, remote);
     for(i = 0; i < MAX_NODE_CNT; i++){
-        rdata[i] = create_node(JSON_BRACKET, NULL, NULL);
-        insert_node(remote, rdata[i]);
-        insert_node(rdata[i], create_node(JSON_STRING, "timeout", "0"));
+        snode_data[i] = create_node(JSON_BRACKET, NULL, NULL);
+        insert_node(remote, snode_data[i]);
+        insert_node(snode_data[i], create_node(JSON_STRING, "timeout", "0"));
     }
 
     //initialize signal quality table
     for(i = 0; i < MAX_NODE_CNT; i++){
         sigs[i] = create_node(JSON_CUSTOM1, NULL, NULL);
-        insert_node(sigtable, sigs[i]);
+        insert_node(ssigtable, sigs[i]);
     }
     update_sig();
     for(i = 0; i < MAX_NODE_CNT; i++){
@@ -101,18 +141,86 @@ int init_tree()
 
     //initialize information table
     update_info();
-
     cnt = sizeof(info_t)/sizeof(data_s);
     for(i = 0; i < cnt; i++){
-        insert_node(information, create_node(JSON_STRING, info_t[i].name, info_t[i].pvalue));
+        insert_node(sinformation, create_node(JSON_STRING, info_t[i].name, info_t[i].pvalue));
     }
 
     update_dvlp();
-
     cnt = sizeof(dvlp_t)/sizeof(data_s);
     for(i = 0; i < cnt; i++){
-        insert_node(developer, create_node(JSON_STRING, dvlp_t[i].name, dvlp_t[i].pvalue));
+        insert_node(sdeveloper, create_node(JSON_STRING, dvlp_t[i].name, dvlp_t[i].pvalue));
     }
+
+    config_root = create_node(JSON_BRACKET, NULL, NULL);
+    cflag = create_node(JSON_STRING, "config", "0");
+    csettings = create_node(JSON_NORMAL, "settings", NULL);
+    cmain = create_node(JSON_NORMAL, "main", NULL);
+    caudio = create_node(JSON_NORMAL, "audio", NULL);
+    cdataport = create_node(JSON_NORMAL, "dataPort", NULL);
+    croute = create_node(JSON_NORMAL, "staticRoute", NULL);
+
+    insert_node(config_root, cflag);
+    insert_node(config_root, csettings);
+    insert_node(csettings, cmain);
+    insert_node(csettings, caudio);
+    insert_node(csettings, cdataport);
+    insert_node(csettings, croute);
+
+    update_main();
+    cnt = sizeof(main_t)/sizeof(data_s);
+    for(i = 0; i < cnt; i++){
+        insert_node(cmain, create_node(JSON_STRING, main_t[i].name, main_t[i].pvalue));
+    }
+
+    update_audio();
+    cnt = sizeof(audio_t)/sizeof(data_s);
+    for(i = 0; i < cnt; i++){
+        insert_node(caudio, create_node(JSON_STRING, audio_t[i].name, audio_t[i].pvalue));
+    }
+
+    update_port0();
+    cnt = sizeof(port0_t)/sizeof(data_s);
+    for(i = 0; i < cnt; i++){
+        insert_node(cdataport, create_node(JSON_STRING, port0_t[i].name, port0_t[i].pvalue));
+    }
+
+#if 0
+    //test delete node func
+    for(i = cnt-1; i < cnt; i++){
+        del_node(sdeveloper, dvlp_t[i].name);
+    }
+
+    //test search and modify node
+    node_s *node = search_node(status_root, "boardType");
+    if(node == NULL){
+        printf("search failed!\n");
+    }else{
+        mod_node(node, "13523523");
+    }
+
+    //test read data from a json file
+    rdata_s *h;
+    h = read_json(STATUS_PATH, NULL);
+    if(h == NULL){
+        printf("no data\n");
+    }else{
+        while(h != NULL){
+            printf("--->%s: %s\n", h->name, h->pvalue);
+            h = h->next;
+        }
+    }
+    printf("\n");
+    h = read_json(STATUS_PATH, "fpgaVersion");
+    if(h == NULL){
+        printf("no data\n");
+    }else{
+        while(h != NULL){
+            printf("--->%s: %s\n", h->name, h->pvalue);
+            h = h->next;
+        }
+    }
+#endif
 
     return 0;
 }
@@ -153,4 +261,50 @@ void update_dvlp()
 
     return ;
 }
+
+void update_main()
+{
+    char buf[64];
+    int i, cnt;
+
+    cnt = sizeof(main_t)/sizeof(data_s);
+    strcpy(buf, "223132");
+    for(i = 0; i < cnt; i++){
+        main_t[i].pvalue = (char*)malloc(strlen(buf)+1);
+        strcpy(main_t[i].pvalue, buf);
+    }
+
+    return ;
+}
+
+void update_audio()
+{
+    char buf[64];
+    int i, cnt;
+
+    cnt = sizeof(audio_t)/sizeof(data_s);
+    strcpy(buf, "fdsf");
+    for(i = 0; i < cnt; i++){
+        audio_t[i].pvalue = (char*)malloc(strlen(buf)+1);
+        strcpy(audio_t[i].pvalue, buf);
+    }
+
+    return ;
+}
+
+void update_port0()
+{
+    char buf[64];
+    int i, cnt;
+
+    cnt = sizeof(port0_t)/sizeof(data_s);
+    strcpy(buf, "14214fdsj");
+    for(i = 0; i < cnt; i++){
+        port0_t[i].pvalue = (char*)malloc(strlen(buf)+1);
+        strcpy(port0_t[i].pvalue, buf);
+    }
+
+    return ;
+}
+
 
