@@ -272,14 +272,17 @@ void mod_node(node_s *node, const char *pvalue)
 {
     int len;
 
+    if(pvalue == NULL) return ;
     len = strlen(pvalue);
-    if(len > (int)strlen(node->pvalue)){
-        free(node->pvalue);
+    if(node->pvalue == NULL){
         node->pvalue = (char*)malloc(len + 1);
-        strcpy(node->pvalue, pvalue);
     }else{
-        strcpy(node->pvalue, pvalue);
+        if(len > (int)strlen(node->pvalue)){
+            free(node->pvalue);
+            node->pvalue = (char*)malloc(len + 1);
+        }
     }
+    strcpy(node->pvalue, pvalue);
 
     return ;
 }
@@ -376,6 +379,20 @@ func_exit:
     return h;
 }
 
+void free_rdata(rdata_s *h)
+{
+    rdata_s *temp;
+
+    while(h != NULL){
+        temp = h;
+        h = h->next;
+        //printf("free %s success\n", temp->name);
+        free(temp->pvalue);
+        free(temp);
+    }
+
+    return ;
+}
 
 
 

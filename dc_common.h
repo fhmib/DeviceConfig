@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 #include <pthread.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
@@ -12,6 +13,7 @@
 
 #define STATUS_PATH                 "status.json"
 #define CONFIG_PATH                 "config.json"
+#define INIT_PATH                   "init.json"
 #define INFO_PATH                   "info"
 #define NAME_LEN                    64
 #define MAX_NODE_CNT                32
@@ -66,9 +68,7 @@ int init_tree();
 void update_sig();
 void update_info();
 void update_dvlp();
-void update_main();
-void update_audio();
-void update_port0();
+void update_config(rdata_s*);
 
 int gen_json(const char*, node_s*);
 void first_tree(FILE*, int, node_s*);
@@ -78,6 +78,7 @@ int del_node(node_s*, char*);
 void mod_node(node_s*, const char*);
 node_s *search_node(node_s*,const char*);
 rdata_s *read_json(const char*, const char*);
+void free_rdata(rdata_s*);
 
 
 

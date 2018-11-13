@@ -31,7 +31,7 @@ data_s dvlp_t[] = {
     {"dsTable", NULL, NULL},
 };
 
-unsigned char sig_t[MAX_NODE_CNT][MAX_NODE_CNT];
+unsigned char sigQuality_t[MAX_NODE_CNT][MAX_NODE_CNT];
 node_s *sigs[MAX_NODE_CNT];
 
 //for config.json
@@ -43,7 +43,7 @@ node_s *caudio;
 node_s *cdataport;
 node_s *croute;
 
-data_s main_t[] = {
+data_s config_t[] = {
     {"nodeId", NULL, NULL},
     {"nodeName", NULL, NULL},
     {"meshId", NULL, NULL},
@@ -55,16 +55,10 @@ data_s main_t[] = {
     {"ipAddress", NULL, NULL},
     {"ipMask", NULL, NULL},
     {"ipGateway", NULL, NULL},
-};
-
-data_s audio_t[] = {
     {"audioEnable", NULL, NULL},
     {"audioHeadGain", NULL, NULL},
     {"audioMicGain", NULL, NULL},
     {"audioMuteLevel", NULL, NULL},
-};
-
-data_s port0_t[] = {
     {"data0BaudRate", NULL, NULL},
     {"data0Parity", NULL, NULL},
     {"data0StopBits", NULL, NULL},
@@ -72,12 +66,12 @@ data_s port0_t[] = {
     {"data0Width", NULL, NULL},
 };
 
-int main(int argc, char *argv[])
+int main()
 {
-    init_tree();
+    //init_tree();
 
-    gen_json(STATUS_PATH, status_root);
-    gen_json(CONFIG_PATH, config_root);
+    //gen_json(STATUS_PATH, status_root);
+    //gen_json(CONFIG_PATH, config_root);
 
     return 0;
 }
@@ -122,7 +116,7 @@ int init_tree()
     for(i = 0; i < MAX_NODE_CNT; i++){
         buf[0] = 0;
         for(j = 0; j < MAX_NODE_CNT; j++){
-            sprintf(temp, "%u", sig_t[i][j]);
+            sprintf(temp, "%u", sigQuality_t[i][j]);
             strcat(buf, temp);
             if(j < MAX_NODE_CNT - 1){
                 strcat(buf, ", ");
@@ -167,22 +161,16 @@ int init_tree()
     insert_node(csettings, cdataport);
     insert_node(csettings, croute);
 
-    update_main();
-    cnt = sizeof(main_t)/sizeof(data_s);
-    for(i = 0; i < cnt; i++){
-        insert_node(cmain, create_node(JSON_STRING, main_t[i].name, main_t[i].pvalue));
+    rdata_s *init;
+    init = read_json(INIT_PATH, NULL);
+    if(init != NULL){
+        update_config(init);
+        free_rdata(init);
     }
 
-    update_audio();
-    cnt = sizeof(audio_t)/sizeof(data_s);
+    cnt = sizeof(config_t)/sizeof(data_s);
     for(i = 0; i < cnt; i++){
-        insert_node(caudio, create_node(JSON_STRING, audio_t[i].name, audio_t[i].pvalue));
-    }
-
-    update_port0();
-    cnt = sizeof(port0_t)/sizeof(data_s);
-    for(i = 0; i < cnt; i++){
-        insert_node(cdataport, create_node(JSON_STRING, port0_t[i].name, port0_t[i].pvalue));
+        insert_node(cdataport, create_node(JSON_STRING, config_t[i].name, config_t[i].pvalue));
     }
 
 #if 0
@@ -209,6 +197,7 @@ int init_tree()
             printf("--->%s: %s\n", h->name, h->pvalue);
             h = h->next;
         }
+        free_rdata(h);
     }
     printf("\n");
     h = read_json(STATUS_PATH, "fpgaVersion");
@@ -219,6 +208,7 @@ int init_tree()
             printf("--->%s: %s\n", h->name, h->pvalue);
             h = h->next;
         }
+        free_rdata(h);
     }
 #endif
 
@@ -227,7 +217,7 @@ int init_tree()
 
 void update_sig()
 {
-    memset(sig_t, 255, sizeof(sig_t));
+    memset(sigQuality_t, 255, sizeof(sigQuality_t));
 
     return ;
 }
@@ -262,49 +252,31 @@ void update_dvlp()
     return ;
 }
 
-void update_main()
+void update_config(rdata_s *init)
 {
-    char buf[64];
-    int i, cnt;
+    int i, cnt, len;
 
-    cnt = sizeof(main_t)/sizeof(data_s);
-    strcpy(buf, "223132");
-    for(i = 0; i < cnt; i++){
-        main_t[i].pvalue = (char*)malloc(strlen(buf)+1);
-        strcpy(main_t[i].pvalue, buf);
+    cnt = sizeof(config_t)/sizeof(data_s);
+
+    while(init != NULL){
+        for(i = 0; i < cnt; i++){
+            if(strcmp(init->name, config_t[i].name) == 0){
+                len = strlen(init->pvalue);
+                if(config_t[i].pvalue == NULL){
+                    config_t[i].pvalue = (char*)malloc(len + 1);
+                }else{
+                    if(len > (int)strlen(config_t[i].pvalue)){
+                        free(config_t[i].pvalue);
+                        config_t[i].pvalue = (char*)malloc(len + 1);
+                    }
+                }
+                strcpy(config_t[i].pvalue, init->pvalue);
+                break;
+            }
+        }
+        init = init->next;
     }
 
     return ;
 }
-
-void update_audio()
-{
-    char buf[64];
-    int i, cnt;
-
-    cnt = sizeof(audio_t)/sizeof(data_s);
-    strcpy(buf, "fdsf");
-    for(i = 0; i < cnt; i++){
-        audio_t[i].pvalue = (char*)malloc(strlen(buf)+1);
-        strcpy(audio_t[i].pvalue, buf);
-    }
-
-    return ;
-}
-
-void update_port0()
-{
-    char buf[64];
-    int i, cnt;
-
-    cnt = sizeof(port0_t)/sizeof(data_s);
-    strcpy(buf, "14214fdsj");
-    for(i = 0; i < cnt; i++){
-        port0_t[i].pvalue = (char*)malloc(strlen(buf)+1);
-        strcpy(port0_t[i].pvalue, buf);
-    }
-
-    return ;
-}
-
 
