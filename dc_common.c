@@ -1,10 +1,11 @@
 #include "dc_common.h"
 
+extern node_s *sdeveloper;
+
 int gen_json(const char *path, node_s *root)
 {
     int rval = 0;
     FILE *fp = NULL;
-    char buf[512];
     int i;
 
     fp = fopen(path, "w");
@@ -14,7 +15,6 @@ int gen_json(const char *path, node_s *root)
         goto func_exit;
     }
     i = 0;
-    buf[0] = 0;
 
     first_tree(fp, 0, root);
 
@@ -236,12 +236,42 @@ void insert_node(node_s *dst, node_s *src)
 
 /*
  * func:
- *      delete a child node by name
+ *      delete a node and all childs belong to it, use it carefully, the use-method is refer to del_node() function.
+ */
+void _del_node(node_s *node)
+{
+    node_l *p;
+    node_l *temp;
+
+    p = &node->child_h;
+    if(p->next != NULL){
+        p = p->next;
+        while(p != NULL){
+            _del_node(p->pnode);
+            temp = p;
+            p = p->next;
+            free(temp);
+        }
+    }
+
+    //printf("%s is freeing %s\n", __func__, node->name);
+    if(node->pvalue != NULL){
+        free(node->pvalue);
+        node->pvalue = NULL;
+    }
+    free(node);
+
+    return ;
+}
+
+/*
+ * func:
+ *      delete a node by name, the funcion will delete node and all its child
  * ret:
  *      0:              success
  *      other:          failure
  */
-int del_node(node_s *node, char *name)
+int del_node(node_s *node, const char *name)
 {
     int rval = 1;
     node_l *p, *temp;
@@ -251,6 +281,7 @@ int del_node(node_s *node, char *name)
         if((0 == strcmp(p->next->pnode->name, name))){
             temp = p->next;
             p->next = temp->next;
+            _del_node(temp->pnode);
             free(temp);
             temp = NULL;
             rval = 0;
@@ -299,6 +330,7 @@ node_s *search_node(node_s *node, const char *name)
     node_l *p = NULL;
     node_s *res;
 
+    //printf("node->name=[%s], name=[%s]\n", node->name, name);
     if(0 == (strcmp(node->name, name))){
         return node;
     }else{
@@ -332,6 +364,10 @@ rdata_s *read_json(const char *path, const char *option)
     rdata_s *t = NULL;
 
     fp = fopen(path, "r");
+    if(fp == NULL){
+        perror("open file failed");
+        goto func_exit;
+    }
     while(NULL != fgets(buf, 256, fp)){
         name = strtok(buf, "{[\t\n \"");
         if(name == NULL) continue;
@@ -341,9 +377,11 @@ rdata_s *read_json(const char *path, const char *option)
         }
 
         if((value = strtok(NULL, "{[\t\n \"")) == NULL) continue;
+
         if(0 != strcmp(value, ":")) continue;
 
         value = strtok(NULL, "{[\t\n \"");
+
         if(value == NULL) continue;
 
         //printf("%s: %s\n", name, value);
@@ -393,8 +431,6 @@ void free_rdata(rdata_s *h)
 
     return ;
 }
-
-
 
 
 

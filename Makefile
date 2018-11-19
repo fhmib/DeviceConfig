@@ -1,8 +1,9 @@
 CC = gcc
 obj = dc_common.o dc_main.o
+CFLAGS = -g
 
 devcfg: $(obj)
-	 $(CC) -o $@ $^
+	$(CC) $(CFLAGS)  $^ -o $@ -lpthread
 
 dc_common.o: dc_common.h
 
