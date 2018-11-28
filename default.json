@@ -1,0 +1,31 @@
+{
+    "config": "0",
+    "settings": {
+        "main": {
+            "nodeId": "4",
+            "nodeName": "2WL-1608004",
+            "meshId": "157",
+            "centreFreq": "1395",
+            "chanBandwidth": "2.5",
+            "TX1Power": "5",
+            "TX2Power": "5",
+            "reduceMimo": "1",
+            "ipAddress": "192.168.0.4",
+            "ipMask": "255.255.255.0",
+            "ipGateway": "192.168.0.1"
+        },
+        "audio": {
+            "audioEnable": "1",
+            "audioHeadGain": "4",
+            "audioMicGain": "3",
+            "audioMuteLevel": "8"
+        },
+        "dataPort": {
+            "data0BaudRate": "1",
+            "data0Parity": "0",
+            "data0StopBits": "0",
+            "data0FlowControl": "0",
+            "data0Width": "8"
+        }
+    }
+}

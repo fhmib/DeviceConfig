@@ -1,7 +1,10 @@
 #include "dc_common.h"
+#include "dc_io.h"
 
 U8 sa;
 pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
+int mc_fd;
+struct sockaddr_in mc_addr;
 
 //for status.json
 node_s *status_root;
@@ -15,26 +18,32 @@ node_s *snode_data[MAX_NODE_CNT];
 //genernal timers for process
 static timers_s gts;
 
+sdata_s status_data[] = {
+    {JSON_NORMAL, "test", NULL, NULL, "null"},
+    {JSON_STRING, "test1", NULL, test1, "test"},
+    {JSON_STRING, "test2", NULL, test2, "test"},
+};
+
 data_s info_t[] = {
-    {"softwareVersion", NULL, NULL},
-    {"protocolVersion", NULL, NULL},
-    {"fpgaVersion", NULL, NULL},
-    {"serialNumber", NULL, NULL},
-    {"boardType", NULL, NULL},
-    {"phyAddress", NULL, NULL}
+    {"softwareVersion", NULL, NULL, ""},
+    {"protocolVersion", NULL, NULL, ""},
+    {"fpgaVersion", NULL, NULL, ""},
+    {"serialNumber", NULL, NULL, ""},
+    {"boardType", NULL, NULL, ""},
+    {"phyAddress", NULL, NULL, ""}
 };
 
 data_s dvlp_t[] = {
-    {"tbsAddress", NULL, NULL},
-    {"upsAddress", NULL, NULL},
-    {"clockLevel", NULL, NULL},
-    {"netStatus", NULL, NULL},
-    {"slotCnt", NULL, NULL},
-    {"BBTxCnt", NULL, NULL},
-    {"BBRxCnt", NULL, NULL},
-    {"BBSFCnt", NULL, NULL},
-    {"bsTable", NULL, NULL},
-    {"dsTable", NULL, NULL},
+    {"tbsAddress", NULL, NULL, ""},
+    {"upsAddress", NULL, NULL, ""},
+    {"clockLevel", NULL, NULL, ""},
+    {"netStatus", NULL, NULL, ""},
+    {"slotCnt", NULL, NULL, ""},
+    {"BBTxCnt", NULL, NULL, ""},
+    {"BBRxCnt", NULL, NULL, ""},
+    {"BBSFCnt", NULL, NULL, ""},
+    {"bsTable", NULL, NULL, ""},
+    {"dsTable", NULL, NULL, ""},
 };
 
 unsigned char sigQuality_t[MAX_NODE_CNT][MAX_NODE_CNT];
@@ -49,7 +58,7 @@ node_s *caudio;
 node_s *cdataport;
 node_s *croute;
 
-cdata_s config_t[] = {
+data_s config_t[] = {
     {"nodeId", NULL, NULL, "main"},
     {"nodeName", NULL, NULL, "main"},
     {"meshId", NULL, NULL, "main"},
@@ -75,20 +84,15 @@ cdata_s config_t[] = {
 int main(int argc, char *argv[])
 {
     sigset_t t_set;
-    pthread_t tid;
+    pthread_t tm_tid, rcv_tid;
 
     //for test
     sa = 1;
 
+    if(dc_init()){
+        goto main_exit;
+    }
     init_tree();
-
-    /*
-    del_node(status_root, sstatus->name);
-    del_node(status_root, "flags");
-    del_node(status_root, "sigQualityTable");
-    del_node(status_root, "information");
-    del_node(status_root, "developer");
-    */
 
     gen_json(STATUS_PATH, status_root);
     gen_json(CONFIG_PATH, config_root);
@@ -102,18 +106,21 @@ int main(int argc, char *argv[])
     timer_add("check reset", 1, chk_reset, 0);
     timer_add("sub timeout", 2, sub_timeout, 0);
 
-    pthread_create(&tid, NULL, timer_thread, &t_set);
+    pthread_create(&tm_tid, NULL, timer_thread, &t_set);
+    pthread_create(&rcv_tid, NULL, rcv_thread, NULL);
 
     while(1){
         sleep(10);
     }
 
+main_exit:
     return 0;
 }
 
 int init_tree()
 {
     int i, j, cnt;
+    char init_flag = 0;
     char buf[1024], temp[32];
     node_s *remote = create_node(JSON_ARRAY, "remoteStatus", NULL);
 
@@ -152,6 +159,8 @@ int init_tree()
         insert_node(snode_data[i], create_node(JSON_STRING, "froib3h", "15"));
 #endif
     }
+    mod_node(snode_data[sa-1]->child_h.next->pnode, "15");
+    update_status();
 
     //initialize signal quality table
     for(i = 0; i < MAX_NODE_CNT; i++){
@@ -180,13 +189,13 @@ int init_tree()
     }
 
     //initialize information table
-    update_info();
+    update_info_t();
     cnt = sizeof(info_t)/sizeof(data_s);
     for(i = 0; i < cnt; i++){
         insert_node(sinformation, create_node(JSON_STRING, info_t[i].name, info_t[i].pvalue));
     }
 
-    update_dvlp();
+    update_dvlp_t();
     cnt = sizeof(dvlp_t)/sizeof(data_s);
     for(i = 0; i < cnt; i++){
         insert_node(sdeveloper, create_node(JSON_STRING, dvlp_t[i].name, dvlp_t[i].pvalue));
@@ -216,14 +225,29 @@ int init_tree()
         update_config(init);
         free_rdata(init);
     }else{
+        fprintf(stderr, "init.json is broken, try to restore it\n");
+        init = read_json(DEFAULT_PATH, NULL);
+        if(init == NULL){
+            fprintf(stderr, "default.json is broken! restore failed\n");
+            goto func_exit;
+        }
+        update_config(init);
+        free_rdata(init);
+        init_flag = 1;
     }
 
     node_s *pnode;
-    cnt = sizeof(config_t)/sizeof(cdata_s);
+    cnt = sizeof(config_t)/sizeof(data_s);
     for(i = 0; i < cnt; i++){
         pnode = search_node(config_root, config_t[i].fname);
         //printf("i=%d, pnode = %p\n", i, pnode);
         insert_node(search_node(config_root, config_t[i].fname), create_node(JSON_STRING, config_t[i].name, config_t[i].pvalue));
+    }
+
+    //restore init.json
+    if(init_flag == 1){
+        gen_json(INIT_PATH, config_root);
+        fprintf(stderr, "restore init.json success\n");
     }
 
 #if 0
@@ -265,6 +289,7 @@ int init_tree()
     }
 #endif
 
+func_exit:
     return 0;
 }
 
@@ -275,7 +300,7 @@ void update_sig()
     return ;
 }
 
-void update_info()
+void update_info_t()
 {
     char buf[64];
     int i, cnt;
@@ -283,14 +308,17 @@ void update_info()
     cnt = sizeof(info_t)/sizeof(data_s);
     strcpy(buf, "1.1");
     for(i = 0; i < cnt; i++){
-        info_t[i].pvalue = (char*)malloc(strlen(buf)+1);
-        strcpy(info_t[i].pvalue, buf);
+        if(info_t[i].pvalue == NULL){
+            info_t[i].pvalue = (char*)malloc(strlen(buf)+1);
+            strcpy(info_t[i].pvalue, buf);
+        }else{
+        }
     }
 
     return ;
 }
 
-void update_dvlp()
+void update_dvlp_t()
 {
     char buf[64];
     int i, cnt;
@@ -298,8 +326,11 @@ void update_dvlp()
     cnt = sizeof(dvlp_t)/sizeof(data_s);
     strcpy(buf, "11");
     for(i = 0; i < cnt; i++){
-        dvlp_t[i].pvalue = (char*)malloc(strlen(buf)+1);
-        strcpy(dvlp_t[i].pvalue, buf);
+        if(dvlp_t[i].pvalue == NULL){
+            dvlp_t[i].pvalue = (char*)malloc(strlen(buf)+1);
+            strcpy(dvlp_t[i].pvalue, buf);
+        }else{
+        }
     }
 
     return ;
@@ -429,6 +460,8 @@ void chk_online(U32 arg)
 
     //printf("I'm in %s, arg = %d\n", __func__, arg);
 
+    pthread_mutex_lock(&pmutex);
+
     if((pd = read_json(STATUS_PATH, "online")) == NULL){
         fprintf(stderr, "status.json is doubted broken\n");
         gen_json(STATUS_PATH, status_root);
@@ -436,13 +469,18 @@ void chk_online(U32 arg)
     }
 
     if(0 == (strcmp("1", pd->pvalue))){
+        //fprintf(stderr, "%s,%d\n", __func__, __LINE__);
         update_status();
-        //need more code to send request to other node
+        update_dvlp_t();
+
+        //send request to other node
+        send_req();
 
         gen_json(STATUS_PATH, status_root);
     }
 
 func_exit:
+    pthread_mutex_unlock(&pmutex);
     if(pd != NULL){
         free_rdata(pd);
     }
@@ -457,8 +495,10 @@ void chk_config(U32 arg)
 
     //printf("I'm in %s, arg = %d\n", __func__, arg);
 
+    pthread_mutex_lock(&pmutex);
+
     if((pd = read_json(CONFIG_PATH, "config")) == NULL){
-        fprintf(stderr, "config.json is doubted broken\n");
+        fprintf(stderr, "%s:config.json is doubted broken\n", __func__);
         gen_json(CONFIG_PATH, config_root);
         goto func_exit;
     }
@@ -473,6 +513,8 @@ void chk_config(U32 arg)
     }
 
 func_exit:
+    pthread_mutex_unlock(&pmutex);
+
     if(pd != NULL){
         free_rdata(pd);
     }
@@ -488,6 +530,8 @@ void chk_reset(U32 arg)
     rdata_s *def = NULL;
 
     //printf("I'm in %s, arg = %d\n", __func__, arg);
+
+    pthread_mutex_lock(&pmutex);
 
     if((pd = read_json(CONFIG_PATH, "reset")) == NULL){
         fprintf(stderr, "config.json is doubted broken\n");
@@ -505,6 +549,7 @@ void chk_reset(U32 arg)
     }
 
 func_exit:
+    pthread_mutex_unlock(&pmutex);
     if(pd != NULL){
         free_rdata(pd);
     }
@@ -525,8 +570,11 @@ void sub_timeout(U32 arg)
 
     //printf("I'm in %s, arg = %d\n", __func__, arg);
 
+    pthread_mutex_lock(&pmutex);
+
     for(i = 0; i < 32; i++){
         //printf("*******************\n");
+        if(i == sa-1) continue;
         node = search_node(snode_data[i], "timeout");
         //printf("*******************\n");
         if(node != NULL){
@@ -534,15 +582,12 @@ void sub_timeout(U32 arg)
             //printf("--> timeout[%d] = %d, timeout_flag[%d] = %d\n", i, value, i, timeout_flag[i]);
             if(value > 0 && (i != (sa-1))){
                 if(value == MAX_TIMEOUT){
-                    pthread_mutex_lock(&pmutex);
                     if(timeout_flag[i] == 0){
                         timeout_flag[i] = 1;
-                        pthread_mutex_unlock(&pmutex);
                         continue;
                     }else{
                         timeout_flag[i] = 0;
                     }
-                    pthread_mutex_unlock(&pmutex);
                 }
                 value -= 1;
                 sprintf(buf, "%d", value);
@@ -559,12 +604,13 @@ void sub_timeout(U32 arg)
         gen_json(STATUS_PATH, status_root);
     }
 
+    pthread_mutex_unlock(&pmutex);
     return ;
 }
 
 /*
  * func:
- *      compare config sinformation between config.json and local variable
+ *      compare config information between config.json and local variable
  * ret:
  *      numbers of config successed parameters
  */
@@ -585,6 +631,8 @@ int cmp_config(rdata_s *rdata)
                 if(strcmp(rdata->pvalue, config_t[i].pvalue) != 0){
                     if(config_t[i].pfunc != NULL){
                         //(*config_t[i].pfunc)(rdata->pvalue, 1);
+
+                        //if failed
                         
                         //if success
                         //update config_t
@@ -623,20 +671,31 @@ static int num;
 void update_status()
 {
     node_s *pn;
-    char buf[16];
+    int cnt, i;
 
-    pn = search_node(sdeveloper, "BBSFCnt");
-    if(pn == NULL){
-        fprintf(stderr, "cannot find node\n");
-        return ;
+    cnt = sizeof(status_data)/sizeof(sdata_s);
+
+    //do pfunc to update status_data
+    for(i = 0; i < cnt; i++){
+        if(status_data[i].pfunc == NULL) continue;
+        else{
+            (*status_data[i].pfunc)(i);
+        }
     }
-    sprintf(buf, "%d", num);
-    mod_node(pn, buf);
-    num++;
+
+    pn = snode_data[sa-1];
+    remove_status(sa-1);
+    for(i = 0; i < cnt; i++){
+        stat2tree(pn, &status_data[i]);
+    }
 
     return ;
 }
 
+/*
+ * func:
+ *      remove all status infomation without 'timeout'
+ */
 void remove_status(int i)
 {
     node_l *p, *temp;
@@ -660,8 +719,344 @@ void remove_status(int i)
     }else{
         printf("error! 'timeout' is lost\n");
     }
+    snode_data[i]->child_t = snode_data[i]->child_h;
 
     return ;
 }
+
+void *rcv_thread(void *arg)
+{
+    int rval;
+    int reqfd, infofd;
+    struct ip_mreq mreq;
+    struct sockaddr_in mserv, userv;
+    struct sockaddr_in cli;
+    socklen_t sock_len;
+    mmsg_t *pm = NULL;
+    fd_set rset, std_rset;
+
+    pthread_detach(pthread_self());
+
+    //create request socket
+    reqfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(reqfd < 0){
+        perror("create request socket failed");
+        rval = 1;
+        goto thread_exit;
+    }
+    //create information socket
+    infofd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(infofd < 0){
+        perror("create information socket failed");
+        rval = 1;
+        goto thread_exit;
+    }
+
+    //join multicast group
+    if(inet_pton(AF_INET, GROUP_IP, &mreq.imr_multiaddr.s_addr) <= 0){
+        printf("Wrong IP address\n");
+        rval = 2;
+        goto thread_exit;
+    }
+    if(inet_pton(AF_INET, NODE_IP, &mreq.imr_interface.s_addr) <= 0){
+        printf("Wrong IP address\n");
+        rval = 2;
+        goto thread_exit;
+    }
+    //mreq.imr_interface.s_addr = INADDR_ANY;
+    setsockopt(reqfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(struct ip_mreq));
+
+    //fill socket address variable
+    mserv.sin_family = AF_INET;
+    mserv.sin_port = htons(PORT);
+    if(inet_pton(AF_INET, GROUP_IP, &mserv.sin_addr) <= 0){
+        printf("Wrong IP address\n");
+        rval = 2;
+        goto thread_exit;
+    }
+
+    userv.sin_family = AF_INET;
+    userv.sin_port = htons(PORT);
+    if(inet_pton(AF_INET, NODE_IP, &userv.sin_addr) <= 0){
+        printf("Wrong IP address\n");
+        rval = 2;
+        goto thread_exit;
+    }
+
+    //bind socket
+    if(bind(reqfd, (struct sockaddr*)&mserv, sizeof(struct sockaddr)) < 0){
+        perror("bind faliled");
+        rval = 3;
+        goto thread_exit;
+    }
+    if(bind(infofd, (struct sockaddr*)&userv, sizeof(struct sockaddr)) < 0){
+        perror("bind faliled");
+        rval = 3;
+        goto thread_exit;
+    }
+
+    sock_len = sizeof(struct sockaddr);
+    pm = (mmsg_t*)malloc(MMSG_LEN);
+
+    FD_ZERO(&std_rset);
+    FD_SET(reqfd, &std_rset);
+    FD_SET(infofd, &std_rset);
+
+    while(1){
+        memcpy(&rset, &std_rset, sizeof(fd_set));
+
+        if(select(MMAX(infofd, reqfd)+1, &rset, NULL, NULL, NULL) < 0){
+            perror("select");
+            continue;
+        }
+
+        if(FD_ISSET(reqfd, &rset)){
+            recvfrom(reqfd, pm, MMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
+            if(pm->type == MMSG_REQ){
+                //if(pm->node == sa) continue;
+
+                printf("recv a requst msg from node %d\n", pm->node);
+                pthread_mutex_lock(&pmutex);
+                update_status();
+                gen_json(STATUS_PATH, status_root);
+                rval = send_info(reqfd, &cli);
+                if(rval != 0){
+                    fprintf(stderr, "send info failed\n");
+                }
+                pthread_mutex_unlock(&pmutex);
+            }
+        }
+        if(FD_ISSET(infofd, &rset)){
+            recvfrom(infofd, pm, MMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
+            if(pm->type == MMSG_INFO){
+                pthread_mutex_lock(&pmutex);
+                printf("recv an info msg from node %d\n", pm->node);
+                //printf("msg:[%s]\n", pm->buf);
+
+                rval = update_node(pm->node, pm->buf);
+                if(rval){
+                    update_time(pm->node, 0);
+                }else{
+                    update_time(pm->node, 15);
+                }
+                gen_json(STATUS_PATH, status_root);
+                pthread_mutex_unlock(&pmutex);
+            }
+        }
+    }
+
+thread_exit:
+    if(pm != NULL) free(pm);
+    pthread_exit((void*)&rval);
+}
+
+/*
+ * func:
+ *      initialize DeviceConfig
+ * ret:
+ *      0:          success
+ *      1:          failure
+ */
+int dc_init()
+{
+    int rval = 0;
+
+    mc_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    mc_addr.sin_family = AF_INET;
+    mc_addr.sin_port = htons(PORT);
+    if(inet_pton(AF_INET, GROUP_IP, &mc_addr.sin_addr) <= 0){
+        printf("Wrong IP address\n");
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+void send_req()
+{
+    mmsg_t msg;
+
+    msg.type = MMSG_REQ;
+    msg.node = sa;
+    sendto(mc_fd, &msg, MMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)&mc_addr, sizeof(struct sockaddr));
+
+    return ;
+}
+
+int send_info(int reqfd, void *cli)
+{
+    mmsg_t msg;
+    int len = 0, llen = 0, i, cnt;
+    int rval = 0;
+    char buf[256];
+
+    ((struct sockaddr_in*)cli)->sin_port = htons(PORT);
+    cnt = sizeof(status_data)/sizeof(sdata_s);
+
+    msg.node = sa+1;
+    len += sizeof(msg.node);
+    msg.type = MMSG_INFO;
+    len += sizeof(msg.type);
+
+    msg.buf[0] = 0;
+    for(i = 0; i < cnt; i++){
+        switch(status_data[i].type){
+            case JSON_NORMAL:
+            case JSON_ARRAY:
+                sprintf(buf, "%s|", status_data[i].name);
+                llen += strlen(buf);
+                if(llen >= MAX_MSG_LEN){
+                    rval = 1;
+                    fprintf(stderr, "msg is too long\n");
+                    goto func_exit;
+                }
+                strcat(msg.buf, buf);
+                break;
+            case JSON_STRING:
+                if(status_data[i].pvalue == NULL) break;
+                sprintf(buf, "%s|", status_data[i].name);
+                llen += strlen(buf);
+                if(llen >= MAX_MSG_LEN){
+                    rval = 1;
+                    fprintf(stderr, "msg is too long\n");
+                    goto func_exit;
+                }
+                strcat(msg.buf, buf);
+                sprintf(buf, "%s|", status_data[i].pvalue);
+                llen += strlen(buf);
+                if(llen >= MAX_MSG_LEN){
+                    rval = 1;
+                    fprintf(stderr, "msg is too long\n");
+                    goto func_exit;
+                }
+                strcat(msg.buf, buf);
+                break;
+            default:
+                break;
+        }
+    }
+    len += strlen(msg.buf)+1;
+
+    //printf("node = %-2d, type = %-2d, msg = [%s]\n", msg.node, msg.type, msg.buf);
+    //sendto(reqfd, &msg, MMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
+    sendto(reqfd, &msg, len, 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
+
+func_exit:
+    return rval;
+}
+
+void update_time(int addr, int value)
+{
+    node_s *node;
+    char buf[16];
+
+    node = search_node(snode_data[addr-1], "timeout");
+    sprintf(buf, "%d", value);
+    mod_node(node, buf);
+}
+
+int update_node(int addr, char *pmsg)
+{
+    char *str1;
+    int i, cnt, rval = 0;
+    sdata_s mould;
+
+    cnt = sizeof(status_data)/sizeof(sdata_s);
+
+    //remove old status
+    remove_status(addr-1);
+
+    str1 = strtok(pmsg, "|");
+    if(str1 != NULL){
+        for(i = 0; i < cnt; i++){
+            if(strcmp(str1, status_data[i].name) == 0){
+                mould = status_data[i];
+                if(mould.type == JSON_NORMAL || mould.type == JSON_ARRAY){
+                    mould.pvalue = NULL;
+                }else if(mould.type == JSON_STRING){
+                    mould.pvalue = strtok(NULL, "|");
+                    if(mould.pvalue == NULL){
+                        rval = 1;
+                        goto func_exit;
+                    } 
+                }
+                stat2tree(snode_data[addr-1], &mould);
+                break;
+            }
+        }
+    }
+    while((str1 = strtok(NULL, "|")) != NULL){
+        for(i = 0; i < cnt; i++){
+            if(strcmp(str1, status_data[i].name) == 0){
+                mould = status_data[i];
+                if(mould.type == JSON_NORMAL || mould.type == JSON_ARRAY){
+                    mould.pvalue = NULL;
+                }else if(mould.type == JSON_STRING){
+                    mould.pvalue = strtok(NULL, "|");
+                    if(mould.pvalue == NULL){
+                        rval = 1;
+                        goto func_exit;
+                    } 
+                }
+                stat2tree(snode_data[addr-1], &mould);
+                break;
+            }
+        }
+    }
+
+func_exit:
+    if(rval){
+        remove_status(addr-1);
+    }
+    return rval;
+}
+
+int stat2tree(node_s *pn, sdata_s *sdata)
+{
+    int rval = 0;
+    node_s *node, *pfn;
+
+    if(strcmp(sdata->fname, "null") == 0){
+        node = create_node(sdata->type, sdata->name, sdata->pvalue);
+        if(node == NULL){
+            fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, sdata->name);
+            rval = 1;
+            goto func_exit;
+        }else{
+            insert_node(pn, node);
+        }
+    }else{
+        pfn = search_node(pn, sdata->fname);
+        if(pfn == NULL){
+            fprintf(stderr, "%s's fname is set wrong, fname is '%s'\n", sdata->name, sdata->fname);
+            rval = 2;
+            goto func_exit;
+        }
+        node = create_node(sdata->type, sdata->name, sdata->pvalue);
+        if(node == NULL){
+            fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, sdata->name);
+            rval = 3;
+            goto func_exit;
+        }else{
+            insert_node(pfn, node);
+        }
+    }
+
+func_exit:
+    return rval;
+}
+
+
+
+
+
+
+
+
+
+
+
 
 

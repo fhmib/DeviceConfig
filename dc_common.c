@@ -160,6 +160,9 @@ node_s *create_node(int type, const char *pname, const char *pvalue)
 {
     node_s *node = (node_s*)malloc(sizeof(node_s));
 
+    //important
+    memset(node, 0, sizeof(node_s));
+
     node->type = (char)type;
     node->child_h.next = node->child_t.next = NULL;
 
@@ -189,6 +192,8 @@ node_s *create_node(int type, const char *pname, const char *pvalue)
             if(pvalue != NULL){
                 node->pvalue = (char*)malloc(strlen(pvalue)+1);
                 strcpy(node->pvalue, pvalue);
+            }else{
+                node->pvalue = NULL;
             }
             return node;
 
@@ -196,6 +201,8 @@ node_s *create_node(int type, const char *pname, const char *pvalue)
             if(pvalue != NULL){
                 node->pvalue = (char*)malloc(strlen(pvalue)+1);
                 strcpy(node->pvalue, pvalue);
+            }else{
+                node->pvalue = NULL;
             }
             return node;
 
@@ -266,7 +273,7 @@ void _del_node(node_s *node)
 
 /*
  * func:
- *      delete a node by name, the funcion will delete node and all its child
+ *      delete a node by name, the funcion will delete node and all its childs
  * ret:
  *      0:              success
  *      other:          failure
@@ -281,6 +288,10 @@ int del_node(node_s *node, const char *name)
         if((0 == strcmp(p->next->pnode->name, name))){
             temp = p->next;
             p->next = temp->next;
+
+            //if the deleted node is the last one, It's very important to change chilt_t to the previous one
+            if(temp->next == NULL) node->child_t.next = p;
+
             _del_node(temp->pnode);
             free(temp);
             temp = NULL;

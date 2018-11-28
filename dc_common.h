@@ -1,3 +1,6 @@
+#ifndef _DC_COMMON_H_
+#define _DC_COMMON_H_
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,6 +9,10 @@
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <time.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
@@ -22,9 +29,15 @@
 #define INIT_PATH                   "init.json"
 #define DEFAULT_PATH                "default.json"
 #define INFO_PATH                   "info"
+#define GROUP_IP                    "224.0.1.129"
+#define NODE_IP                     "192.168.0.106"
+#define MAX_MSG_LEN                 1024
+#define PORT                        9001
 #define NAME_LEN                    64
 #define MAX_NODE_CNT                32
 #define MAX_TIMEOUT                 15
+
+#define MMAX(a,b)                   ((a > b) ? a : b)
 
 //#define JSON_BRACKET                0
 //#define JSON_NORMAL                 1
@@ -39,6 +52,18 @@ typedef enum{
     JSON_STRING,
     JSON_CUSTOM1,
 }JSON_TYPE;
+
+typedef enum{
+    MMSG_REQ,
+    MMSG_INFO,
+}MSG_TYPE;
+
+typedef struct mmsg_t{
+    U8 type;
+    U8 node;
+    char buf[MAX_MSG_LEN];
+}mmsg_t;
+#define MMSG_LEN        sizeof(mmsg_t)
 
 typedef struct _node_l node_l;
 typedef struct _node_s node_s;
@@ -63,18 +88,32 @@ typedef struct _data_s{
     char name[64];
     char *pvalue;
     //int length;                     //length of value
-    char *(*pfunc)(char*, char);    //pointer to function reads/writes value of the parameter
+    char *(*pfunc)(char*, int);    //pointer to function reads/writes value of the parameter
+    char fname[64];                 //father's name of tree
 }data_s;
 
+//struct for store status data and transfer
+typedef struct _sdata_s{
+    char type;
+    char name[64];
+    char *pvalue;
+    //int length;                     //length of value
+    char *(*pfunc)(int);    //pointer to function reads/writes value of the parameter
+    char fname[64];                 //father's name of tree
+}sdata_s;
+
+#if 0
 //struct for store local config data
 typedef struct _cdata_s{
     char name[64];
     char *pvalue;
     //int length;                     //length of value
     char *(*pfunc)(char*, char);    //pointer to function reads/writes value of the parameter
-    char fname[64];                 //father's name of tree
+    //char fname[64];                 //father's name of tree
 }cdata_s;
+#endif
 
+//struct for store data from json file
 typedef struct _rdata_s{
     char name[64];
     char *pvalue;
@@ -98,8 +137,8 @@ typedef struct _timers_s{
 
 int init_tree();
 void update_sig();
-void update_info();
-void update_dvlp();
+void update_info_t();
+void update_dvlp_t();
 void update_config(rdata_s*);
 void *timer_thread(void*);
 int timer_add(const char*, int, void (*)(U32), U32);
@@ -113,6 +152,13 @@ void reset_config(rdata_s*);
 void update_status();
 void remove_status(int);
 void _remove_status(node_s*);
+void *rcv_thread(void*);
+int dc_init();
+void send_req();
+int send_info(int, void*);
+void update_time(int, int);
+int update_node(int, char*);
+int stat2tree(node_s*, sdata_s*);
 
 int gen_json(const char*, node_s*);
 void first_tree(FILE*, int, node_s*);
@@ -134,4 +180,4 @@ void free_rdata(rdata_s*);
 
 
 
-
+#endif
