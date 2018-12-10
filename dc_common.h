@@ -9,6 +9,7 @@
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
+#include <ifaddrs.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <netinet/in.h>
@@ -18,19 +19,31 @@
 #include <sys/msg.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <assert.h>
 
 #define U8                          unsigned char
 #define U16                         unsigned short
 #define U32                         unsigned int
+#define U64                         unsigned long long
+
+#define ON_BOARD                    0
+#define PRINT_COMMAND               1
 
 #define STATUS_PATH                 "status.json"
 #define CONFIG_PATH                 "config.json"
 #define INIT_PATH                   "init.json"
 #define DEFAULT_PATH                "default.json"
-#define INFO_PATH                   "info"
+#define XD_INIT_PATH                "init.sh"
+#define XD_CONFIG_PATH              "config.ini"
+#define INFO_PATH                   "devinfo"
+
+#define NET_PATH                    "/proc/net/dev"
+#define NET_DEV_NAME                "ens33"
+
 #define GROUP_IP                    "224.0.1.129"
 #define NODE_IP                     "192.168.0.106"
+
 #define MAX_MSG_LEN                 1024
 #define PORT                        9001
 #define NAME_LEN                    64
@@ -38,6 +51,9 @@
 #define MAX_TIMEOUT                 15
 
 #define MMAX(a,b)                   ((a > b) ? a : b)
+
+#define CNAME_SERIAL                "serialNumber"
+#define CNAME_BOARDTYPE             "boardType"
 
 //#define JSON_BRACKET                0
 //#define JSON_NORMAL                 1
@@ -83,12 +99,18 @@ typedef struct _node_s{
     node_l child_t;        //tail of child
 }node_s;
 
+//struct for store read-only data
+typedef struct _odata_s{
+    char name[64];
+    char *pvalue;
+}odata_s;
+
 //struct for store local data
 typedef struct _data_s{
     char name[64];
     char *pvalue;
     //int length;                     //length of value
-    char *(*pfunc)(char*, int);    //pointer to function reads/writes value of the parameter
+    int *(*pfunc)(char*, int);    //pointer to function reads/writes value of the parameter
     char fname[64];                 //father's name of tree
 }data_s;
 
@@ -98,7 +120,7 @@ typedef struct _sdata_s{
     char name[64];
     char *pvalue;
     //int length;                     //length of value
-    char *(*pfunc)(int);    //pointer to function reads/writes value of the parameter
+    int (*pfunc)(int, char, char*);    //pointer to function reads/writes value of the parameter
     char fname[64];                 //father's name of tree
 }sdata_s;
 
@@ -135,7 +157,10 @@ typedef struct _timers_s{
     tproc_t procs[32];
 }timers_s;
 
+void print_info(char*);
 int init_tree();
+int config_device();
+void update_rdonly();
 void update_sig();
 void update_info_t();
 void update_dvlp_t();
@@ -147,6 +172,7 @@ void chk_online(U32);
 void chk_config(U32);
 void chk_reset(U32);
 void sub_timeout(U32);
+void ip_status(U32);
 int cmp_config(rdata_s*);
 void reset_config(rdata_s*);
 void update_status();

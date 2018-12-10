@@ -174,7 +174,7 @@ node_s *create_node(int type, const char *pname, const char *pvalue)
         case JSON_NORMAL:
         case JSON_ARRAY:
             if(strlen(pname) > NAME_LEN-1){
-                printf("name is too long\n");
+                fprintf(stderr, "%s:name is too long\n", __func__);
                 free(node);
                 return NULL;
             }
@@ -184,7 +184,7 @@ node_s *create_node(int type, const char *pname, const char *pvalue)
 
         case JSON_STRING:
             if((strlen(pname) > NAME_LEN-1) || (strlen(pname) < 1)){
-                printf("name is invalid\n");
+                fprintf(stderr, "%s:name is invalid, len = %ld\n", __func__, strlen(pname));
                 free(node);
                 return NULL;
             }
