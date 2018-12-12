@@ -1,4 +1,5 @@
-CC = gcc
+#CC = gcc
+CC = arm-xilinx-linux-gnueabi-gcc
 obj = dc_common.o dc_io.o dc_main.o
 CFLAGS = -g
 

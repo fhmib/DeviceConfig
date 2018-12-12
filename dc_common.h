@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <ifaddrs.h>
+#include <termios.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <netinet/in.h>
@@ -29,6 +30,7 @@
 
 #define ON_BOARD                    0
 #define PRINT_COMMAND               1
+#define SOCKET_TEST                 1
 
 #define STATUS_PATH                 "status.json"
 #define CONFIG_PATH                 "config.json"
@@ -38,21 +40,39 @@
 #define XD_CONFIG_PATH              "config.ini"
 #define INFO_PATH                   "devinfo"
 
+#define UART0_PATH                  "/dev/ttyPS1"
 #define NET_PATH                    "/proc/net/dev"
+#if ON_BOARD
+#define NET_DEV_NAME                "eth0"
+#else
 #define NET_DEV_NAME                "ens33"
+#endif
+#define AUDIO_NAME                  "audio_test"
 
 #define GROUP_IP                    "224.0.1.129"
-#define NODE_IP                     "192.168.0.106"
+//micro NODE_IP is absoleted
+//#define NODE_IP                     "192.168.0.5"
 
 #define MAX_MSG_LEN                 1024
-#define PORT                        9001
+#define MUL_PORT                    9001
+#define INFO_PORT                   9001
 #define NAME_LEN                    64
 #define MAX_NODE_CNT                32
 #define MAX_TIMEOUT                 15
+#define PORT_CNT                    1
 
 #define MMAX(a,b)                   ((a > b) ? a : b)
 
 #define CNAME_SERIAL                "serialNumber"
+
+#define CNAME_IPADDRESS             "ipAddress"
+#define CNAME_AUDIOENABLE           "audioEnable"
+#define CNAME_AUDIOMIC              "audioMicGain"
+#define CNAME_AUDIOPLAY             "audioHeadGain"
+#define CNAME_AUDIOALC              "audioMuteLevel"
+#define CNAME_UART0RATE             "data0BaudRate"
+#define CNAME_UART0PARITY           "data0Parity"
+
 #define CNAME_BOARDTYPE             "boardType"
 
 //#define JSON_BRACKET                0
@@ -174,7 +194,8 @@ void chk_reset(U32);
 void sub_timeout(U32);
 void ip_status(U32);
 int cmp_config(rdata_s*);
-void reset_config(rdata_s*);
+int add_config();
+//void reset_config(rdata_s*);
 void update_status();
 void remove_status(int);
 void _remove_status(node_s*);

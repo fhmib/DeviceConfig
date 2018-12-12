@@ -376,7 +376,7 @@ rdata_s *read_json(const char *path, const char *option)
 
     fp = fopen(path, "r");
     if(fp == NULL){
-        perror("open file failed");
+        perror("read_json: open file failed");
         goto func_exit;
     }
     while(NULL != fgets(buf, 256, fp)){

@@ -1,6 +1,7 @@
 #include "dc_io.h"
 
 extern pthread_mutex_t pmutex;
+extern U8 sa;
 
 extern sdata_s status_data[];
 extern int status_cnt;
@@ -11,6 +12,32 @@ extern struct timeval now_tv, pre_tv;
 
 extern sdata_s config_t[];
 extern int config_cnt;
+
+char buf_capvol[] = "/home/bin/amixer cset numid=90,iface=MIXER,name='Capture Volume' ";
+char buf_playvol[] = "/home/bin/amixer cset numid=108,iface=MIXER,name='Lineout Playback Volume' ";
+char buf_alcvol[] = "/home/bin/amixer cset numid=102,iface=MIXER,name='ALC Capture Noise Gate Threshold Volume' ";
+char buf_audio[] = "/home/rzxt_mesh/aaf0216/";
+
+extern char port_flag[];
+
+int name_arr[] = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300};
+
+
+
+
+/*
+ * describe:
+ *      io_*** is the function of read/config device parameters.
+ * parameters:
+ *      index:              index of status_data[] or config_t[]
+ *      mode:               0 --- read para
+ *                          1 --- config device(boot)
+ *                          2 --- config device(config.json)
+ *      pvalue:             config value
+ */
+
+
+
 
 int io_undo(int index, char mode, char *pvalue)
 {
@@ -121,7 +148,7 @@ int io_ipAddress(int index, char mode, char *pvalue)
     }else{
         sprintf(wbuf, "ifconfig " NET_DEV_NAME " %s", pvalue);
 #if PRINT_COMMAND
-        printf("%s\n", wbuf);
+        fprintf(stderr, "%s\n", wbuf);
 #endif
 #if ON_BOARD
         system(wbuf);
@@ -139,7 +166,7 @@ int io_ipMask(int index, char mode, char *pvalue)
 
     sprintf(wbuf, "ifconfig " NET_DEV_NAME " netmask %s", pvalue);
 #if PRINT_COMMAND
-    printf("%s\n", wbuf);
+    fprintf(stderr, "%s\n", wbuf);
 #endif
 #if ON_BOARD
     system(wbuf);
@@ -156,7 +183,7 @@ int io_ipGateway(int index, char mode, char *pvalue)
     sprintf(wbuf, "route del default");
 
 #if PRINT_COMMAND
-    printf("%s\n", wbuf);
+    fprintf(stderr, "%s\n", wbuf);
 #endif
 #if ON_BOARD
     system(wbuf);
@@ -165,7 +192,7 @@ int io_ipGateway(int index, char mode, char *pvalue)
     sprintf(wbuf, "route add default gw %s", pvalue);
 
 #if PRINT_COMMAND
-    printf("%s\n", wbuf);
+    fprintf(stderr, "%s\n", wbuf);
 #endif
 #if ON_BOARD
     system(wbuf);
@@ -228,6 +255,7 @@ int io_nodeName(int index, char mode, char *pvalue)
 
         modify_value(&status_data[index].pvalue, config_t[i].pvalue);
     }else{
+        rval = 0;
     }
 
 func_exit:
@@ -256,6 +284,162 @@ int io_chanBW(int index, char mode, char *pvalue)
 
 func_exit:
     return rval; 
+}
+
+int io_dataRate(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    int i, cnt, value;
+
+    if(mode == 0){
+        rval = 1;
+        goto func_exit;
+    }else{
+        //fprintf(stderr, "%s:%d\n", __func__, i);
+        sscanf(pvalue, "%d", &value);
+        cnt = sizeof(name_arr)/sizeof(int);
+        for(i = 0; i < cnt; i++){
+            if(value == name_arr[i]){
+                break;
+            }
+        }
+
+        if(i >= cnt){
+            rval = 2;
+            goto func_exit;
+        }else{
+            i = getnumfromstr(config_t[index].name);
+            port_flag[i] = 1;
+        }
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_dataParity(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    int i;
+
+    if(mode == 0){
+        rval = 1;
+        goto func_exit;
+    }else{
+        //fprintf(stderr, "%s:%d\n", __func__, i);
+        if((strcmp(pvalue, "odd") != 0) && (strcmp(pvalue, "even") != 0) && (strcmp(pvalue, "none") != 0)){
+            rval = 2;
+            goto func_exit;
+        }else{
+            i = getnumfromstr(config_t[index].name);
+            port_flag[i] = 1;
+        }
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_audioEnable(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    char buf[128];
+    int value;
+
+    if(mode == 0){
+        rval = 1;
+        goto func_exit;
+    }else if(mode == 2){
+        sprintf(buf, "killall " AUDIO_NAME);
+
+#if PRINT_COMMAND
+        fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+        system(buf);
+#endif
+
+        sscanf(pvalue, "%d", &value);
+        if(value != 0){
+            sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
+            usleep(100000);
+
+#if PRINT_COMMAND
+            fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+            system(buf);
+#endif
+        }
+
+    }else{
+        rval = 0;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_audioVol(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    char buf[128];
+    int value;
+
+    if(mode == 0){
+        rval = 1;
+        goto func_exit;
+    }else{
+        sscanf(pvalue, "%d", &value);
+
+        if(strcmp(config_t[index].name, CNAME_AUDIOPLAY) == 0){
+            if((value < 0) || (value > 63)){
+                rval = 2;
+                goto func_exit;
+            }
+            sprintf(buf, "%s%s", buf_playvol, pvalue);
+        }else if(strcmp(config_t[index].name, CNAME_AUDIOMIC) == 0){
+            if((value < 0) || (value > 63)){
+                rval = 2;
+                goto func_exit;
+            }
+            sprintf(buf, "%s%s", buf_capvol, pvalue);
+        }else if(strcmp(config_t[index].name, CNAME_AUDIOALC) == 0){
+            if((value < 0) || (value > 31)){
+                rval = 2;
+                goto func_exit;
+            }
+            sprintf(buf, "%s%s", buf_alcvol, pvalue);
+        }
+
+#if PRINT_COMMAND
+        fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+        system(buf);
+#endif
+    }
+
+func_exit:
+    return rval;
+}
+
+int getnumfromstr(char *arg)
+{
+    char value = -1;
+    char *p;
+
+    p = arg;
+    while(*p != 0){
+        if((*p >= '0') && (*p <= '9')){
+            sscanf(p, "%c", &value);
+            value -= '0';
+            break;
+        }
+        p++;
+    }
+
+    return (int)value;
 }
 
 /*
@@ -590,4 +774,260 @@ int file_size(const char* filename)
     return size;
 }
 
+int config_uart(int which)
+{
+    int rval = 0;
+    int fd = -1;
+    int i;
+    int speed;
+    char *port_path, *sparity;
+    char parity;
+
+    switch(which){
+        case 0:
+            port_path = (char*)malloc(strlen(UART0_PATH)+1);
+            strcpy(port_path, UART0_PATH);
+            for(i = 0; i < config_cnt; i++){
+                if(strcmp(config_t[i].name, CNAME_UART0RATE) == 0){
+                    sscanf(config_t[i].pvalue, "%d", &speed);
+                }else if(strcmp(config_t[i].name, CNAME_UART0PARITY) == 0){
+                    //fprintf(stderr, "%s\n", config_t[i].pvalue);
+                    sparity = config_t[i].pvalue;
+                }
+            }
+            break;
+    }
+
+    if(strcmp("even", sparity) == 0){
+        parity = 'e';
+    }else if(strcmp("odd", sparity) == 0){
+        parity = 'o';
+    }else{
+        parity = 'n';
+    }
+
+#if PRINT_COMMAND
+    fprintf(stderr, "%s: port_path=%s, which=%d, speed=%d, parity=%c\n", __func__, port_path, which, speed, parity);
+#endif
+#if ON_BOARD
+    fd = uart_open(port_path);
+    if(0 == fd){
+        fprintf(stderr, "%s:uart open failed\n", __func__);
+        fd = -1;
+        rval = 1;
+        goto func_exit;
+    }
+
+    rval = set_uart(fd, speed, 0, 8, 1, parity);
+    if(rval){
+        rval = 2;
+        goto func_exit;
+    }else{
+        fprintf(stderr, "%s:config uart success\n", __func__);
+    }
+#endif
+
+func_exit:
+    if(fd != -1){
+        uart_close(fd);
+    }
+    return rval;
+}
+
+/* function:
+ *      open file and return file descriptor
+ * parameters:
+ *      fd:         file descriptor
+ *      port:       path of uart file
+ * return:
+ *      0:          failure
+ *      other:      value of file descriptor
+ */
+int uart_open(const char *port_path)
+{
+    int rval = 0;
+    int fd;
+
+    fd = open(port_path, O_RDWR | O_NOCTTY | O_NDELAY);
+    //fd = open(port_path, O_RDWR);
+    if(-1 == fd){
+        fprintf(stderr, "%s:open file failed\n", __func__);
+        rval = 1;
+        goto func_exit;
+    }
+
+    if(fcntl(fd, F_SETFL, 0) < 0){
+        fprintf(stderr, "%s:fcntl failed\n", __func__);
+        rval = 2;
+        goto func_exit;
+    }
+
+func_exit:
+    if(rval) return 0;
+    else return fd;
+}
+
+void uart_close(int fd)
+{
+    close(fd);
+}
+
+/*
+ * functions:
+ *      set parameters to fd
+ * parameters:
+ *      fd:         file descriptor
+ *      speed:      uart speed
+ *      flow_ctrl:  whether uart has flow control
+ *      databits:   data width
+ *      stopbits:   whether uart has stop bit
+ *      parity:     type of parity
+ * return:
+ *      0:          success
+ *      other:      failure
+ */
+int set_uart(int fd, int speed, int flow_ctrl, int databits, int stopbits, char parity)
+{
+    int rval = 0;
+    int i;
+    int speed_arr[] = {B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300};
+
+    struct termios options;
+
+    if(tcgetattr(fd, &options) != 0){
+        rval = 1;
+        fprintf(stderr, "%s:tcgetattr failed\n", __func__);
+        goto func_exit;
+    }
+
+    for(i = 0; i < (int)(sizeof(speed_arr)/sizeof(int)); i++)
+    {
+        if(speed == name_arr[i]){
+            //fprintf(stderr, "%s:speed is %d\n", __func__, speed);
+            rval = cfsetispeed(&options, speed_arr[i]);
+            if(rval == -1){
+                fprintf(stderr, "%s:cfsetispeed falied\n", __func__);
+            }
+            rval = cfsetospeed(&options, speed_arr[i]);
+            if(rval == -1){
+                fprintf(stderr, "%s:cfsetispeed falied\n", __func__);
+            }
+            
+            break;
+        }
+    }
+    if(i >= (int)(sizeof(speed_arr)/sizeof(int))){
+        fprintf(stderr, "%s:input speed error\n", __func__);
+        rval = 2;
+        goto func_exit;
+    }
+
+    /*
+    speed = cfgetispeed(&options);
+    fprintf(stderr, "%s:ispeed is %d\n", __func__, speed);
+    speed = cfgetospeed(&options);
+    fprintf(stderr, "%s:ospeed is %d\n", __func__, speed);
+    */
+    options.c_cflag |= CLOCAL;
+    options.c_cflag |= CREAD;
+
+    switch(flow_ctrl)
+    {
+        case 0:
+            options.c_cflag &= ~CRTSCTS;
+            break;
+        case 1:
+            options.c_cflag |= CRTSCTS;
+            break;
+        /*
+        case 2:
+            options.c_iflag |= IXON | IXOFF | IXANY;
+            break;
+        */
+    }
+
+    options.c_cflag &= ~CSIZE;
+    switch(databits)
+    {
+        case 5:
+            options.c_cflag |= CS5;
+            break;
+        case 6:
+            options.c_cflag |= CS6;
+            break;
+        case 7:
+            options.c_cflag |= CS7;
+            break;
+        case 8:
+            options.c_cflag |= CS8;
+            break;
+        default:
+            fprintf(stderr, "%s:Unsupported data size\n", __func__);
+            rval = 2;
+            goto func_exit;
+    }
+
+    switch(parity)
+    {
+        case 'n':
+        case 'N':
+            options.c_cflag &= ~PARENB;
+            options.c_iflag &= ~INPCK;
+            break;
+        case 'o':
+        case 'O':
+            options.c_cflag |= (PARODD | PARENB);
+            options.c_iflag |= (INPCK | ISTRIP);
+            break;
+        case 'e':
+        case 'E':
+            options.c_cflag |= PARENB;
+            options.c_cflag &= ~PARODD;
+            options.c_iflag |= (INPCK | ISTRIP);
+            break;
+        default:
+            fprintf(stderr, "%s:Unsupported parity\n", __func__);
+            rval = 3;
+            goto func_exit;
+    }
+
+    switch(stopbits)
+    {
+        case 1:
+            options.c_cflag &= ~CSTOPB;
+            break;
+        case 2:
+            options.c_cflag |= CSTOPB;
+            break;
+        default:
+            fprintf(stderr, "%s:Unsupported stop bits\n", __func__);
+            rval = 4;
+            goto func_exit;
+    }
+
+    options.c_cflag &= ~(IXON | IXOFF | IXANY);
+    options.c_iflag &= ~(INLCR | IGNCR | ICRNL);
+    options.c_iflag &= ~(ONLCR | OCRNL);
+    options.c_oflag &= ~(INLCR | IGNCR | ICRNL);
+    options.c_oflag &= ~(ONLCR | OCRNL);
+
+
+    options.c_oflag &= ~OPOST;
+    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+
+    options.c_cc[VTIME] = 2;
+    options.c_cc[VMIN] = 0;
+
+    //clean input and output buffer
+    tcflush(fd, TCIFLUSH);
+
+    if(tcsetattr(fd, TCSANOW, &options) != 0){
+        fprintf(stderr, "%s:com set error\n", __func__);
+        rval = 5;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
 

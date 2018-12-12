@@ -3,6 +3,8 @@
 
 U8 sa;
 pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
+
+//for sending socket
 int mc_fd;
 struct sockaddr_in mc_addr;
 
@@ -31,7 +33,7 @@ sdata_s status_data[] = {
     {JSON_STRING, "nodeId", NULL, &io_nodeId, "nodeHeader"},
     {JSON_STRING, "nodeName", NULL, &io_nodeName, "nodeHeader"},
     {JSON_STRING, CNAME_SERIAL, NULL, &io_undo, "nodeHeader"},
-    {JSON_STRING, "ipAddress", NULL, &io_ipAddress, "nodeHeader"},
+    {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, "nodeHeader"},
     {JSON_NORMAL, "ipStatus", NULL, NULL, "null"},
     {JSON_STRING, "ipTxByteCnt", NULL, &io_ipTxByteCnt, "ipStatus"},
     {JSON_STRING, "ipTxPktCnt", NULL, &io_ipTxPktCnt, "ipStatus"},
@@ -91,15 +93,15 @@ sdata_s config_t[] = {
     {JSON_STRING, "ipAddress", NULL, &io_ipAddress, "main"},
     {JSON_STRING, "ipMask", NULL, &io_ipMask, "main"},
     {JSON_STRING, "ipGateway", NULL, &io_ipGateway, "main"},
-    {JSON_STRING, "audioEnable", NULL, NULL, "audio"},
-    {JSON_STRING, "audioHeadGain", NULL, NULL, "audio"},
-    {JSON_STRING, "audioMicGain", NULL, NULL, "audio"},
-    {JSON_STRING, "audioMuteLevel", NULL, NULL, "audio"},
-    {JSON_STRING, "data0BaudRate", NULL, NULL, "dataPort"},
-    {JSON_STRING, "data0Parity", NULL, NULL, "dataPort"},
-    {JSON_STRING, "data0StopBits", NULL, NULL, "dataPort"},
-    {JSON_STRING, "data0FlowControl", NULL, NULL, "dataPort"},
-    {JSON_STRING, "data0Width", NULL, NULL, "dataPort"},
+    {JSON_STRING, CNAME_AUDIOENABLE, NULL, &io_audioEnable, "audio"},
+    {JSON_STRING, CNAME_AUDIOPLAY, NULL, &io_audioVol, "audio"},
+    {JSON_STRING, CNAME_AUDIOMIC, NULL, &io_audioVol, "audio"},
+    {JSON_STRING, CNAME_AUDIOALC, NULL, &io_audioVol, "audio"},
+    {JSON_STRING, CNAME_UART0RATE, NULL, &io_dataRate, "dataPort"},
+    {JSON_STRING, CNAME_UART0PARITY, NULL, &io_dataParity, "dataPort"},
+    //{JSON_STRING, "data0StopBits", NULL, NULL, "dataPort"},
+    //{JSON_STRING, "data0FlowControl", NULL, NULL, "dataPort"},
+    //{JSON_STRING, "data0Width", NULL, NULL, "dataPort"},
 };
 int config_cnt = sizeof(config_t)/sizeof(sdata_s);
 
@@ -108,12 +110,13 @@ U64 now_txbytes, now_txpackets, now_txerrors;
 U64 pre_txbytes, pre_txpackets, pre_txerrors; 
 U64 now_rxbytes, now_rxpackets, now_rxerrors; 
 U64 pre_rxbytes, pre_rxpackets, pre_rxerrors; 
-
 U64 txbytes, txpackets, txerrors; 
 U64 rxbytes, rxpackets, rxerrors; 
-
 struct timeval pre_tv = {0,0};
 struct timeval now_tv = {0,0};
+
+//for config serial port
+char port_flag[PORT_CNT] = {0};
 
 int main(int argc, char *argv[])
 {
@@ -126,7 +129,7 @@ int main(int argc, char *argv[])
     }
 
     sscanf(argv[1], "%u", (U32*)&sa);
-    printf("%s:node address is %d\n", argv[0], sa);
+    fprintf(stderr, "%s:node address is %d\n", argv[0], sa);
 
     print_info(argv[0]);
 
@@ -316,20 +319,23 @@ int config_device()
             while(1){
                 rval = (*config_t[i].pfunc)(i, 1, config_t[i].pvalue);
                 if(rval){
-                    fprintf(stderr, "%s configured failed, try again, times = %d\n", config_t[i].name, times++);
+                    fprintf(stderr, "%s configured failed, try again, rval = %d, times = %d\n", config_t[i].name, rval, times++);
                     if(times > 2){
-                        fprintf(stderr, "%s configured failed, times = %d\n", __func__, times);
+                        fprintf(stderr, "%s configured failed, rval = %d, times = %d\n", __func__, rval, times);
                         break;
                     }
                     usleep(500000);
                 }else{
+                    usleep(100000);
                     break;
                 }
             }
         }
     }
 
-    return rval;
+    add_config();
+
+    return 0;
 }
 
 void update_rdonly()
@@ -666,10 +672,8 @@ void sub_timeout(U32 arg)
     pthread_mutex_lock(&pmutex);
 
     for(i = 0; i < 32; i++){
-        //printf("*******************\n");
         if(i == sa-1) continue;
         node = search_node(snode_data[i], "timeout");
-        //printf("*******************\n");
         if(node != NULL){
             value = atoi(node->pvalue);
             //printf("--> timeout[%d] = %d, timeout_flag[%d] = %d\n", i, value, i, timeout_flag[i]);
@@ -815,25 +819,18 @@ int cmp_config(rdata_s *rdata)
                 }
                 if(strcmp(rdata->pvalue, config_t[i].pvalue) != 0){
                     if(config_t[i].pfunc != NULL){
-                        rval = (*config_t[i].pfunc)(i, 1, rdata->pvalue);
+                        rval = (*config_t[i].pfunc)(i, 2, rdata->pvalue);
+                        usleep(100000);
 
                         //if failed
                         if(rval != 0){
-                            fprintf(stderr, "config %s failed\n", rdata->name);
+                            fprintf(stderr, "config %s failed, rval = %d\n", rdata->name, rval);
                             break;
                         }
 
                         //if success
                         flag+=1;
                         //update config_t
-#if 0
-                        len = strlen(rdata->pvalue);
-                        if(len > (int)strlen(config_t[i].pvalue)){
-                            free(config_t[i].pvalue);
-                            config_t[i].pvalue = (char*)malloc(len + 1);
-                        }
-                        strcpy(config_t[i].pvalue, rdata->pvalue);
-#endif
                         modify_value(&config_t[i].pvalue, rdata->pvalue);
 
                         //update tree
@@ -853,7 +850,30 @@ int cmp_config(rdata_s *rdata)
         rdata = rdata->next;
     }
 
+    add_config();
+
     return flag;
+}
+
+//additional config
+int add_config()
+{
+    int rval = 0;
+    int i;
+
+    for(i = 0; i < PORT_CNT; i++){
+        //fprintf(stderr, "%d\n", port_flag[i]);
+        if(port_flag[i]){
+            rval = config_uart(i);
+            if(rval){
+                fprintf(stderr, "%s:config uart failed\n", __func__);
+            }
+            port_flag[i] = 0;
+        }
+    }
+
+func_exit:
+    return rval;
 }
 
 static int num;
@@ -896,7 +916,7 @@ void remove_status(int i)
     if(p->next != NULL){
         p = p->next;
         if(0 != strcmp(p->pnode->name, "timeout")){
-            printf("error! 'timeout' is lost\n");
+            fprintf(stderr, "error! 'timeout' is lost\n");
             return ;
         }
         temp = p;
@@ -909,7 +929,7 @@ void remove_status(int i)
             free(temp);
         }
     }else{
-        printf("error! 'timeout' is lost\n");
+        fprintf(stderr, "error! 'timeout' is lost\n");
     }
     snode_data[i]->child_t = snode_data[i]->child_h;
 
@@ -918,7 +938,7 @@ void remove_status(int i)
 
 void *rcv_thread(void *arg)
 {
-    int rval;
+    int rval = 0, i;
     int reqfd, infofd;
     struct ip_mreq mreq;
     struct sockaddr_in mserv, userv;
@@ -926,8 +946,23 @@ void *rcv_thread(void *arg)
     socklen_t sock_len;
     mmsg_t *pm = NULL;
     fd_set rset, std_rset;
+    char node_ip[16];
 
     pthread_detach(pthread_self());
+
+    for(i = 0; i < status_cnt; i++){
+        if(strcmp(status_data[i].name, CNAME_IPADDRESS) == 0){
+            (*status_data[i].pfunc)(i, 0, NULL);
+            if(status_data[i].pvalue == NULL){
+                rval = 10;
+                fprintf(stderr, "%s:ip pvalue is NULL\n", __func__);
+                goto thread_exit;
+            }else{
+                strcpy(node_ip, status_data[i].pvalue);
+                fprintf(stderr, "node_ip:%s\n", node_ip);
+            }
+        }
+    }
 
     //create request socket
     reqfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -946,12 +981,12 @@ void *rcv_thread(void *arg)
 
     //join multicast group
     if(inet_pton(AF_INET, GROUP_IP, &mreq.imr_multiaddr.s_addr) <= 0){
-        printf("Wrong IP address\n");
+        fprintf(stderr, "Wrong IP address\n");
         rval = 2;
         goto thread_exit;
     }
-    if(inet_pton(AF_INET, NODE_IP, &mreq.imr_interface.s_addr) <= 0){
-        printf("Wrong IP address\n");
+    if(inet_pton(AF_INET, node_ip, &mreq.imr_interface.s_addr) <= 0){
+        fprintf(stderr, "Wrong IP address\n");
         rval = 2;
         goto thread_exit;
     }
@@ -960,29 +995,31 @@ void *rcv_thread(void *arg)
 
     //fill socket address variable
     mserv.sin_family = AF_INET;
-    mserv.sin_port = htons(PORT);
+    mserv.sin_port = htons(MUL_PORT);
     if(inet_pton(AF_INET, GROUP_IP, &mserv.sin_addr) <= 0){
-        printf("Wrong IP address\n");
+        fprintf(stderr, "Wrong IP address\n");
         rval = 2;
         goto thread_exit;
     }
 
     userv.sin_family = AF_INET;
-    userv.sin_port = htons(PORT);
-    if(inet_pton(AF_INET, NODE_IP, &userv.sin_addr) <= 0){
-        printf("Wrong IP address\n");
+    userv.sin_port = htons(INFO_PORT);
+    //fprintf(stderr, "node_ip:%s\n", node_ip);
+    if(inet_pton(AF_INET, node_ip, &userv.sin_addr) <= 0){
+        fprintf(stderr, "Wrong IP address\n");
         rval = 2;
         goto thread_exit;
     }
 
     //bind socket
     if(bind(reqfd, (struct sockaddr*)&mserv, sizeof(struct sockaddr)) < 0){
-        perror("bind faliled");
+        perror("bind reqfd failed");
         rval = 3;
         goto thread_exit;
     }
+    //sleep(1);
     if(bind(infofd, (struct sockaddr*)&userv, sizeof(struct sockaddr)) < 0){
-        perror("bind faliled");
+        perror("bind infofd failed");
         rval = 3;
         goto thread_exit;
     }
@@ -1005,9 +1042,12 @@ void *rcv_thread(void *arg)
         if(FD_ISSET(reqfd, &rset)){
             recvfrom(reqfd, pm, MMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
             if(pm->type == MMSG_REQ){
-                //if(pm->node == sa) continue;
+                if(pm->node == sa){
+                    fprintf(stderr, "recv a requst msg from node %d, drop\n", pm->node);
+                    continue;
+                }
 
-                printf("recv a requst msg from node %d\n", pm->node);
+                fprintf(stderr, "recv a requst msg from node %d\n", pm->node);
                 pthread_mutex_lock(&pmutex);
                 update_status();
                 gen_json(STATUS_PATH, status_root);
@@ -1022,7 +1062,7 @@ void *rcv_thread(void *arg)
             recvfrom(infofd, pm, MMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
             if(pm->type == MMSG_INFO){
                 pthread_mutex_lock(&pmutex);
-                printf("recv an info msg from node %d\n", pm->node);
+                fprintf(stderr, "recv an info msg from node %d\n", pm->node);
                 //printf("msg:[%s]\n", pm->buf);
 
                 rval = update_node(pm->node, pm->buf);
@@ -1055,9 +1095,9 @@ int dc_init()
 
     mc_fd = socket(AF_INET, SOCK_DGRAM, 0);
     mc_addr.sin_family = AF_INET;
-    mc_addr.sin_port = htons(PORT);
+    mc_addr.sin_port = htons(MUL_PORT);
     if(inet_pton(AF_INET, GROUP_IP, &mc_addr.sin_addr) <= 0){
-        printf("Wrong IP address\n");
+        fprintf(stderr, "Wrong IP address\n");
         rval = 1;
         goto func_exit;
     }
@@ -1071,7 +1111,11 @@ void send_req()
     mmsg_t msg;
 
     msg.type = MMSG_REQ;
+#if SOCKET_TEST
+    msg.node = sa+1;
+#else
     msg.node = sa;
+#endif
     sendto(mc_fd, &msg, MMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)&mc_addr, sizeof(struct sockaddr));
 
     return ;
@@ -1084,9 +1128,13 @@ int send_info(int reqfd, void *cli)
     int rval = 0;
     char buf[256];
 
-    ((struct sockaddr_in*)cli)->sin_port = htons(PORT);
+    ((struct sockaddr_in*)cli)->sin_port = htons(INFO_PORT);
 
+#if SOCKET_TEST
     msg.node = sa+1;
+#else
+    msg.node = sa;
+#endif
     len += sizeof(msg.node);
     msg.type = MMSG_INFO;
     len += sizeof(msg.type);
@@ -1240,6 +1288,7 @@ int stat2tree(node_s *pn, sdata_s *sdata)
 func_exit:
     return rval;
 }
+
 
 
 
