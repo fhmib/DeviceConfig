@@ -28,7 +28,7 @@
 #define U32                         unsigned int
 #define U64                         unsigned long long
 
-#define ON_BOARD                    0
+#define ON_BOARD                    1
 #define PRINT_COMMAND               1
 #define SOCKET_TEST                 1
 
@@ -42,6 +42,7 @@
 
 #define UART0_PATH                  "/dev/ttyPS1"
 #define NET_PATH                    "/proc/net/dev"
+#define KEY_PATH                    "/etc/profile"
 #if ON_BOARD
 #define NET_DEV_NAME                "eth0"
 #else
@@ -53,7 +54,18 @@
 //micro NODE_IP is absoleted
 //#define NODE_IP                     "192.168.0.5"
 
-#define MAX_MSG_LEN                 1024
+#define SN_MNCONF                   8
+#define SN_DEVCFG                   11
+#define MMSG_MN_GUIIN               2004
+#define MMSG_MN_GUIOUT              2005
+#define MMSG_MN_RESET               2006
+#define MN_REQ_MAC_STATE            3100
+#define RESET_SET_AAR               14504
+#define MN_REP_MAC                  21002
+#define MN_REP_ROUTE                21003
+
+#define MAX_SOCK_LEN                1024
+#define MAX_MSG_LEN                 8192
 #define MUL_PORT                    9001
 #define INFO_PORT                   9001
 #define NAME_LEN                    64
@@ -63,9 +75,12 @@
 
 #define MMAX(a,b)                   ((a > b) ? a : b)
 
-#define CNAME_SERIAL                "serialNumber"
-
+#define CNAME_NODEID                "nodeId"
+#define CNAME_NODENAME              "nodeName"
+#define CNAME_MESHID                "meshId"
 #define CNAME_IPADDRESS             "ipAddress"
+#define CNAME_IPMASK                "ipMask"
+#define CNAME_IPGATEWAY             "ipGateway"
 #define CNAME_AUDIOENABLE           "audioEnable"
 #define CNAME_AUDIOMIC              "audioMicGain"
 #define CNAME_AUDIOPLAY             "audioHeadGain"
@@ -74,6 +89,19 @@
 #define CNAME_UART0PARITY           "data0Parity"
 
 #define CNAME_BOARDTYPE             "boardType"
+#define CNAME_SERIAL                "serialNumber"
+
+#define CNAME_NETSTATUS             "netStatus"
+#define CNAME_TBS                   "tbsAddress"
+#define CNAME_UPS                   "upsAddress"
+#define CNAME_CLOCK                 "clockLevel"
+#define CNAME_SLOTCNT               "slotCnt"
+#define CNAME_L2BNUM                "BBRxCnt"
+#define CNAME_B2LNUM                "BBTxCnt"
+#define CNAME_BBSFNUM               "BBSFCnt"
+#define CNAME_VMODE                 "vMode"
+#define CNAME_BSTABLE               "BSTable"
+#define CNAME_DSTABLE               "DSTable"
 
 //#define JSON_BRACKET                0
 //#define JSON_NORMAL                 1
@@ -90,16 +118,28 @@ typedef enum{
 }JSON_TYPE;
 
 typedef enum{
-    MMSG_REQ,
-    MMSG_INFO,
-}MSG_TYPE;
+    SMSG_REQ,
+    SMSG_INFO,
+}SMSG_TYPE;
 
-typedef struct mmsg_t{
+typedef struct _smsg_t{
     U8 type;
     U8 node;
-    char buf[MAX_MSG_LEN];
+    char buf[MAX_SOCK_LEN];
+}smsg_t;
+#define SMSG_LEN        sizeof(smsg_t)
+
+typedef struct _mmsg_t{
+    long mtype;
+    U8 node;
+    char data[MAX_MSG_LEN];
 }mmsg_t;
 #define MMSG_LEN        sizeof(mmsg_t)
+
+typedef struct _mnhd_t{
+    long type;
+}mnhd_t;
+#define MNHD_LEN        sizeof(mnhd_t)
 
 typedef struct _node_l node_l;
 typedef struct _node_s node_s;
@@ -177,13 +217,29 @@ typedef struct _timers_s{
     tproc_t procs[32];
 }timers_s;
 
+typedef struct _mac_state{
+    U16 rfnt;
+    U8 sta;
+    U8 tbs;
+    U8 ups;
+    U8 clks;
+    U8 bsmap[32];
+    U8 delay;
+    U8 osn;
+    U16 l2bnum;
+    U16 b2lnum;
+    U16 sfb2l;
+    U8 dsmap[55];
+    U8 vmode;
+}mac_state;
+
 void print_info(char*);
 int init_tree();
 int config_device();
 void update_rdonly();
 void update_sig();
-void update_info_t();
-void update_dvlp_t();
+void update_info();
+void update_dvlp();
 void update_config(rdata_s*);
 void *timer_thread(void*);
 int timer_add(const char*, int, void (*)(U32), U32);
@@ -213,10 +269,12 @@ node_s *create_node(int, const char*, const char*);
 void insert_node(node_s*, node_s*);
 int del_node(node_s*, const char*);
 void _del_node(node_s*);
+int remove_childs(node_s*);
 void mod_node(node_s*, const char*);
 node_s *search_node(node_s*,const char*);
 rdata_s *read_json(const char*, const char*);
 void free_rdata(rdata_s*);
+void modify_value(char**, char*);
 
 
 

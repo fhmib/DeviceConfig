@@ -2,7 +2,7 @@
     "config": "0",
     "settings": {
         "main": {
-            "nodeId": "1",
+            "nodeId": "4",
             "nodeName": "2WL-1608004",
             "meshId": "157",
             "centreFreq": "1395",
@@ -21,7 +21,7 @@
         },
         "dataPort": {
             "data0BaudRate": "115200",
-            "data0Parity": "none"
+            "data0Parity": "None"
         }
     }
 }

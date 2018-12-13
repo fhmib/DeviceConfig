@@ -204,7 +204,7 @@ int io_ipGateway(int index, char mode, char *pvalue)
 int io_nodeId(int index, char mode, char *pvalue)
 {
     int rval = 0;
-    int i;
+    int i, value;
     FILE *fp = NULL;
 
     if(mode == 0){
@@ -220,10 +220,16 @@ int io_nodeId(int index, char mode, char *pvalue)
 
         modify_value(&status_data[index].pvalue, config_t[i].pvalue);
     }else{
+        sscanf(pvalue, "%d", &value);
+        if((value > MAX_NODE_CNT) || (value < 0)){
+            fprintf(stderr, "%s: %d is invalid\n", __func__, value);
+            rval = 2;
+            goto func_exit;
+        }
         rval = modify_file(XD_INIT_PATH, "inode_id=", "=", NULL, pvalue);
         if(rval){
             fprintf(stderr, "%s:modify_file failed, rval = %d\n", __func__, rval);
-            rval = 2;
+            rval = 3;
             goto func_exit;
         }
     }
@@ -327,7 +333,11 @@ int io_dataParity(int index, char mode, char *pvalue)
         goto func_exit;
     }else{
         //fprintf(stderr, "%s:%d\n", __func__, i);
-        if((strcmp(pvalue, "odd") != 0) && (strcmp(pvalue, "even") != 0) && (strcmp(pvalue, "none") != 0)){
+        if((strcmp(pvalue, "Odd") != 0) && (strcmp(pvalue, "Even") != 0)\
+                && (strcmp(pvalue, "None") != 0) && (strcmp(pvalue, "odd") != 0)\
+                && (strcmp(pvalue, "even") != 0) && (strcmp(pvalue, "none") != 0)\
+                && (strcmp(pvalue, "ODD") != 0) && (strcmp(pvalue, "EVEN") != 0)\
+                && (strcmp(pvalue, "NONE") != 0)){
             rval = 2;
             goto func_exit;
         }else{
@@ -440,37 +450,6 @@ int getnumfromstr(char *arg)
     }
 
     return (int)value;
-}
-
-/*
- * func:
- *      modify the value of 'pvalue' according to 'value'
- */
-void modify_value(char **pvalue, char *value)
-{
-    unsigned int len;
-
-    if(value == NULL){
-        if(*pvalue != NULL){
-            free(*pvalue);
-            *pvalue = NULL;
-        }
-    }else{
-        len = strlen(value);
-
-        if(*pvalue == NULL){
-            *pvalue = (char*)malloc(len+1);
-        }else{
-            if(strlen(*pvalue) < len){
-                free(*pvalue);
-                *pvalue = (char*)malloc(len+1);
-            }
-        }
-
-        strcpy(*pvalue, value);
-    }
-
-    return ;
 }
 
 /*
@@ -798,9 +777,9 @@ int config_uart(int which)
             break;
     }
 
-    if(strcmp("even", sparity) == 0){
+    if((strcmp("even", sparity) == 0) || (strcmp("EVEN", sparity) == 0) || (strcmp("Even", sparity) == 0)){
         parity = 'e';
-    }else if(strcmp("odd", sparity) == 0){
+    }else if((strcmp("odd", sparity) == 0) || (strcmp("ODD", sparity) == 0) || (strcmp("Odd", sparity) == 0)){
         parity = 'o';
     }else{
         parity = 'n';

@@ -8,7 +8,7 @@ devcfg: $(obj)
 
 dc_common.o: dc_common.h
 
-dc_io.o: dc_io.h
+dc_io.o: dc_io.h dc_common.h
 
 dc_main.o: dc_common.h dc_io.h
 

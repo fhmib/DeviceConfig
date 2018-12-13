@@ -4,6 +4,9 @@
 U8 sa;
 pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
 
+int mn_qid = -1;
+int dc_qid = -1;
+
 //for sending socket
 int mc_fd;
 struct sockaddr_in mc_addr;
@@ -25,13 +28,13 @@ odata_s rdonly_data[] = {
     {"serialNumber", NULL},
     {"boardType", NULL}
 };
-int rdonly_cnt = sizeof(rdonly_data)/sizeof(odata_s);
+int rdonly_cnt = sizeof(rdonly_data)/sizeof(rdonly_data[0]);
 
 //local status table
 sdata_s status_data[] = {
     {JSON_NORMAL, "nodeHeader", NULL, NULL, "null"},
-    {JSON_STRING, "nodeId", NULL, &io_nodeId, "nodeHeader"},
-    {JSON_STRING, "nodeName", NULL, &io_nodeName, "nodeHeader"},
+    {JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, "nodeHeader"},
+    {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, "nodeHeader"},
     {JSON_STRING, CNAME_SERIAL, NULL, &io_undo, "nodeHeader"},
     {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, "nodeHeader"},
     {JSON_NORMAL, "ipStatus", NULL, NULL, "null"},
@@ -42,7 +45,7 @@ sdata_s status_data[] = {
     {JSON_STRING, "ipRxPktCnt", NULL, &io_ipRxPktCnt, "ipStatus"},
     {JSON_STRING, "ipRxErrorCnt", NULL, &io_ipRxErrorCnt, "ipStatus"},
 };
-int status_cnt = sizeof(status_data)/sizeof(sdata_s);
+int status_cnt = sizeof(status_data)/sizeof(status_data[0]);
 
 //information table
 data_s info_t[] = {
@@ -53,20 +56,23 @@ data_s info_t[] = {
     {CNAME_BOARDTYPE, NULL, NULL, ""},
     {"phyAddress", NULL, NULL, ""}
 };
+int info_cnt = sizeof(info_t)/sizeof(info_t[0]);
 
 //developer table
-data_s dvlp_t[] = {
-    {"tbsAddress", NULL, NULL, ""},
-    {"upsAddress", NULL, NULL, ""},
-    {"clockLevel", NULL, NULL, ""},
-    {"netStatus", NULL, NULL, ""},
-    {"slotCnt", NULL, NULL, ""},
-    {"BBTxCnt", NULL, NULL, ""},
-    {"BBRxCnt", NULL, NULL, ""},
-    {"BBSFCnt", NULL, NULL, ""},
-    {"bsTable", NULL, NULL, ""},
-    {"dsTable", NULL, NULL, ""},
+sdata_s dvlp_t[] = {
+    {JSON_STRING, CNAME_TBS, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_UPS, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_CLOCK, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_NETSTATUS, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_SLOTCNT, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_L2BNUM, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_B2LNUM, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_BBSFNUM, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_VMODE, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_BSTABLE, NULL, NULL, "null"},
+    {JSON_STRING, CNAME_DSTABLE, NULL, NULL, "null"},
 };
+int dvlp_cnt = sizeof(dvlp_t)/sizeof(dvlp_t[0]);
 
 unsigned char sigQuality_t[MAX_NODE_CNT][MAX_NODE_CNT];
 node_s *sigs[MAX_NODE_CNT];
@@ -82,17 +88,17 @@ node_s *croute;
 
 //config table
 sdata_s config_t[] = {
-    {JSON_STRING, "nodeId", NULL, &io_nodeId, "main"},
-    {JSON_STRING, "nodeName", NULL, &io_nodeName, "main"},
-    {JSON_STRING, "meshId", NULL, NULL, "main"},
+    {JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, "main"},
+    {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, "main"},
+    {JSON_STRING, CNAME_MESHID, NULL, NULL, "main"},
     {JSON_STRING, "centreFreq", NULL, NULL, "main"},
     {JSON_STRING, "chanBandwidth", NULL, &io_chanBW, "main"},
     {JSON_STRING, "TX1Power", NULL, NULL, "main"},
     {JSON_STRING, "TX2Power", NULL, NULL, "main"},
     {JSON_STRING, "reduceMimo", NULL, NULL, "main"},
-    {JSON_STRING, "ipAddress", NULL, &io_ipAddress, "main"},
-    {JSON_STRING, "ipMask", NULL, &io_ipMask, "main"},
-    {JSON_STRING, "ipGateway", NULL, &io_ipGateway, "main"},
+    {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, "main"},
+    {JSON_STRING, CNAME_IPMASK, NULL, &io_ipMask, "main"},
+    {JSON_STRING, CNAME_IPGATEWAY, NULL, &io_ipGateway, "main"},
     {JSON_STRING, CNAME_AUDIOENABLE, NULL, &io_audioEnable, "audio"},
     {JSON_STRING, CNAME_AUDIOPLAY, NULL, &io_audioVol, "audio"},
     {JSON_STRING, CNAME_AUDIOMIC, NULL, &io_audioVol, "audio"},
@@ -103,7 +109,7 @@ sdata_s config_t[] = {
     //{JSON_STRING, "data0FlowControl", NULL, NULL, "dataPort"},
     //{JSON_STRING, "data0Width", NULL, NULL, "dataPort"},
 };
-int config_cnt = sizeof(config_t)/sizeof(sdata_s);
+int config_cnt = sizeof(config_t)/sizeof(config_t[0]);
 
 //for ip status
 U64 now_txbytes, now_txpackets, now_txerrors; 
@@ -123,6 +129,7 @@ int main(int argc, char *argv[])
     sigset_t t_set;
     pthread_t tm_tid, rcv_tid;
 
+#if 0
     if(argc < 2){
         fprintf(stderr, "%s:error! need a node address\n", argv[0]);
         goto main_exit;
@@ -130,6 +137,7 @@ int main(int argc, char *argv[])
 
     sscanf(argv[1], "%u", (U32*)&sa);
     fprintf(stderr, "%s:node address is %d\n", argv[0], sa);
+#endif
 
     print_info(argv[0]);
 
@@ -178,7 +186,7 @@ void print_info(char *arg)
 
 int init_tree()
 {
-    int i, j, cnt;
+    int i, j;
     char init_flag = 0;
     char buf[1024], temp[32];
 
@@ -219,6 +227,18 @@ int init_tree()
         update_config(init);
         free_rdata(init);
         init_flag = 1;
+    }
+
+    //read node id from config_t[]
+    for(i = 0; i < config_cnt; i++){
+        if(0 == strcmp(config_t[i].name, CNAME_NODEID)){
+            sscanf(config_t[i].pvalue, "%u", (int*)&sa);
+            if(sa > MAX_NODE_CNT){
+                fprintf(stderr, "%s: nodeId is invalid\n", __func__);
+                exit(1);
+            }
+            fprintf(stderr, "%s: sa = %d\n", __func__, sa);
+        }
     }
 
     node_s *pnode;
@@ -289,15 +309,15 @@ int init_tree()
     }
 
     //initialize information table
-    update_info_t();
-    cnt = sizeof(info_t)/sizeof(data_s);
-    for(i = 0; i < cnt; i++){
+    update_info();
+    for(i = 0; i < info_cnt; i++){
         insert_node(sinformation, create_node(JSON_STRING, info_t[i].name, info_t[i].pvalue));
     }
 
-    update_dvlp_t();
-    cnt = sizeof(dvlp_t)/sizeof(data_s);
-    for(i = 0; i < cnt; i++){
+#if 0
+    update_dvlp();
+#endif
+    for(i = 0; i < dvlp_cnt; i++){
         insert_node(sdeveloper, create_node(JSON_STRING, dvlp_t[i].name, dvlp_t[i].pvalue));
     }
 
@@ -395,7 +415,7 @@ void update_sig()
     return ;
 }
 
-void update_info_t()
+void update_info()
 {
     /*
     char buf[64];
@@ -415,21 +435,169 @@ void update_info_t()
     return ;
 }
 
-void update_dvlp_t()
+/*
+ * func:
+ *      update dvlp_t through receiving msg form mn
+ */
+void update_dvlp()
 {
-    char buf[64];
-    int i, cnt;
+    mmsg_t msg;
+    mmsg_t rmsg;
+    mnhd_t *mnhd;
+    int len = 0;
+    int i, j;
+    char buf[1024], temp[16];
+    mac_state *hm_state;
 
-    cnt = sizeof(dvlp_t)/sizeof(data_s);
-    strcpy(buf, "11");
-    for(i = 0; i < cnt; i++){
-        if(dvlp_t[i].pvalue == NULL){
-            dvlp_t[i].pvalue = (char*)malloc(strlen(buf)+1);
-            strcpy(dvlp_t[i].pvalue, buf);
+    msg.mtype = MMSG_MN_GUIIN;
+    msg.node = 5;
+    len += sizeof(msg.node);
+
+    mnhd = (mnhd_t*)msg.data;
+    mnhd->type = MN_REQ_MAC_STATE;
+    len += MNHD_LEN;
+
+    msgsnd(mn_qid, &msg, len, 0);
+
+    i = 3;
+    while(i--){
+        if(-1 == msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)){
+            if((i < 2) && (i >= 0)){
+                perror("update_dvlp:msgrcv hm_state failed, try again\n");
+            }
+            usleep(500000);
         }else{
+            break;
         }
     }
 
+    //recv failed
+    if(i < 0){
+        fprintf(stderr, "%s:error! msgrcv hm_state failed\n", __func__);
+        goto func_exit;
+    }
+
+    mnhd = (mnhd_t*)rmsg.data;
+    if(mnhd->type != MN_REP_MAC){
+        fprintf(stderr, "%s:receive wrong type, type=%ld\n", __func__, mnhd->type);
+        goto func_exit;
+    }
+
+    hm_state = (mac_state*)(rmsg.data + MNHD_LEN);
+
+#if 0
+    printf("%s:rfnt:%u\n", __func__, hm_state->rfnt);
+    printf("%s:net_state:%u\n", __func__, hm_state->sta);
+    printf("%s:tbs:%u\n", __func__, hm_state->tbs);
+    printf("%s:ups:%u\n", __func__, hm_state->ups);
+    printf("%s:clk_level:%u\n", __func__, hm_state->clks);
+    printf("%s:delay:%u\n", __func__, hm_state->delay);
+    printf("%s:occupy_slot_number:%u\n", __func__, hm_state->osn);
+    printf("%s:Low2BB:%u\n", __func__, hm_state->l2bnum);
+    printf("%s:BB2Low:%u\n", __func__, hm_state->b2lnum);
+    printf("%s:BB2Low_SF:%u\n", __func__, hm_state->sfb2l);
+    printf("%s:vmode:%u\n", __func__, hm_state->vmode);
+#endif
+
+    for(i = 0; i < config_cnt; i++){
+        if(strcmp(config_t[i].name, CNAME_MESHID) == 0){
+            sprintf(buf, "%u", hm_state->rfnt);
+            modify_value(&config_t[i].pvalue, buf);
+            break;
+        }
+    }
+
+    for(i = 0; i < dvlp_cnt; i++){
+        if(strcmp(dvlp_t[i].name, CNAME_NETSTATUS) == 0){
+            switch(hm_state->sta){
+                case 0:
+                    strcpy(buf, "INIT");
+                    break;
+                case 1:
+                    strcpy(buf, "SCAN");
+                    break;
+                case 2:
+                    strcpy(buf, "WAN");
+                    break;
+                case 3:
+                    strcpy(buf, "NET");
+                    break;
+                default:
+                    buf[0] = 0;
+                    break;
+            }
+            if(buf[0] == 0){
+                modify_value(&dvlp_t[i].pvalue, NULL);
+            }else{
+                modify_value(&dvlp_t[i].pvalue, buf);
+            }
+        }else if(strcmp(dvlp_t[i].name, CNAME_TBS) == 0){
+            sprintf(buf, "%u", hm_state->tbs);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_UPS) == 0){
+            sprintf(buf, "%u", hm_state->ups);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_CLOCK) == 0){
+            sprintf(buf, "%u", hm_state->clks);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_SLOTCNT) == 0){
+            sprintf(buf, "%u", hm_state->osn);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_L2BNUM) == 0){
+            sprintf(buf, "%u", hm_state->l2bnum);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_B2LNUM) == 0){
+            sprintf(buf, "%u", hm_state->b2lnum);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_BBSFNUM) == 0){
+            sprintf(buf, "%u", hm_state->sfb2l);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_VMODE) == 0){
+            sprintf(buf, "%u", hm_state->vmode);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_BSTABLE) == 0){
+            for(j = 0; j < 32; j++){
+                if(j == 0){
+                    sprintf(temp, "[%u, ", hm_state->bsmap[j]);
+                    sprintf(buf, "%s", temp);
+                }else if(j < 31){
+                    sprintf(temp, "%u, ", hm_state->bsmap[j]);
+                    strcat(buf, temp);
+                }else{
+                    sprintf(temp, "%u]", hm_state->bsmap[j]);
+                    strcat(buf, temp);
+                }
+            }
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }else if(strcmp(dvlp_t[i].name, CNAME_DSTABLE) == 0){
+            for(j = 0; j < 55; j++){
+                if(j == 0){
+                    sprintf(temp, "[%u, ", hm_state->dsmap[j]);
+                    sprintf(buf, "%s", temp);
+                }else if(j < 54){
+                    sprintf(temp, "%u, ", hm_state->dsmap[j]);
+                    strcat(buf, temp);
+                }else{
+                    sprintf(temp, "%u]", hm_state->dsmap[j]);
+                    strcat(buf, temp);
+                }
+            }
+            modify_value(&dvlp_t[i].pvalue, buf);
+        }
+    }
+
+    remove_childs(sdeveloper);
+
+    for(i = 0; i < dvlp_cnt; i++){
+#if 0
+        if(dvlp_t[i].pvalue != NULL){
+            printf("%s:%s\n", dvlp_t[i].name, dvlp_t[i].pvalue);
+        }
+#endif
+        stat2tree(sdeveloper, &dvlp_t[i]);
+    }
+
+func_exit:
     return ;
 }
 
@@ -570,7 +738,9 @@ void chk_online(U32 arg)
     if(0 == (strcmp("1", pd->pvalue))){
         //fprintf(stderr, "%s,%d\n", __func__, __LINE__);
         update_status();
-        update_dvlp_t();
+#if ON_BOARD
+        update_dvlp();
+#endif
 
         //send request to other node
         send_req();
@@ -888,7 +1058,7 @@ void update_status()
 
     //do pfunc to update status_data
     for(i = 0; i < status_cnt; i++){
-        //fprintf(stderr, "%s,%d\n", __func__, __LINE__);
+        //fprintf(stderr, "%s,%d: papare to config %s\n", __func__, __LINE__, status_data[i].name);
         if(status_data[i].pfunc == NULL) continue;
         else{
             (*status_data[i].pfunc)(i, 0, NULL);
@@ -944,7 +1114,7 @@ void *rcv_thread(void *arg)
     struct sockaddr_in mserv, userv;
     struct sockaddr_in cli;
     socklen_t sock_len;
-    mmsg_t *pm = NULL;
+    smsg_t *pm = NULL;
     fd_set rset, std_rset;
     char node_ip[16];
 
@@ -1025,7 +1195,7 @@ void *rcv_thread(void *arg)
     }
 
     sock_len = sizeof(struct sockaddr);
-    pm = (mmsg_t*)malloc(MMSG_LEN);
+    pm = (smsg_t*)malloc(SMSG_LEN);
 
     FD_ZERO(&std_rset);
     FD_SET(reqfd, &std_rset);
@@ -1040,8 +1210,8 @@ void *rcv_thread(void *arg)
         }
 
         if(FD_ISSET(reqfd, &rset)){
-            recvfrom(reqfd, pm, MMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
-            if(pm->type == MMSG_REQ){
+            recvfrom(reqfd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
+            if(pm->type == SMSG_REQ){
                 if(pm->node == sa){
                     fprintf(stderr, "recv a requst msg from node %d, drop\n", pm->node);
                     continue;
@@ -1059,8 +1229,8 @@ void *rcv_thread(void *arg)
             }
         }
         if(FD_ISSET(infofd, &rset)){
-            recvfrom(infofd, pm, MMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
-            if(pm->type == MMSG_INFO){
+            recvfrom(infofd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
+            if(pm->type == SMSG_INFO){
                 pthread_mutex_lock(&pmutex);
                 fprintf(stderr, "recv an info msg from node %d\n", pm->node);
                 //printf("msg:[%s]\n", pm->buf);
@@ -1092,7 +1262,9 @@ thread_exit:
 int dc_init()
 {
     int rval = 0;
+    key_t dc_key, mn_key;
 
+    //create multicast client socket
     mc_fd = socket(AF_INET, SOCK_DGRAM, 0);
     mc_addr.sin_family = AF_INET;
     mc_addr.sin_port = htons(MUL_PORT);
@@ -1102,28 +1274,44 @@ int dc_init()
         goto func_exit;
     }
 
+
+    //create message queue
+    dc_key = ftok(KEY_PATH, SN_DEVCFG);
+    mn_key = ftok(KEY_PATH, SN_MNCONF);
+
+    mn_qid = msgget(mn_key, IPC_CREAT | 0755);
+    if(mn_qid == -1){
+        perror("msgget mn_qid");
+        exit(1);
+    }
+    dc_qid = msgget(dc_key, IPC_CREAT | 0755);
+    if(dc_qid == -1){
+        perror("msgget dc_qid");
+        exit(1);
+    }
+
 func_exit:
     return rval;
 }
 
 void send_req()
 {
-    mmsg_t msg;
+    smsg_t msg;
 
-    msg.type = MMSG_REQ;
+    msg.type = SMSG_REQ;
 #if SOCKET_TEST
     msg.node = sa+1;
 #else
     msg.node = sa;
 #endif
-    sendto(mc_fd, &msg, MMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)&mc_addr, sizeof(struct sockaddr));
+    sendto(mc_fd, &msg, SMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)&mc_addr, sizeof(struct sockaddr));
 
     return ;
 }
 
 int send_info(int reqfd, void *cli)
 {
-    mmsg_t msg;
+    smsg_t msg;
     int len = 0, llen = 0, i;
     int rval = 0;
     char buf[256];
@@ -1136,7 +1324,7 @@ int send_info(int reqfd, void *cli)
     msg.node = sa;
 #endif
     len += sizeof(msg.node);
-    msg.type = MMSG_INFO;
+    msg.type = SMSG_INFO;
     len += sizeof(msg.type);
 
     msg.buf[0] = 0;
@@ -1146,7 +1334,7 @@ int send_info(int reqfd, void *cli)
             case JSON_ARRAY:
                 sprintf(buf, "%s|", status_data[i].name);
                 llen += strlen(buf);
-                if(llen >= MAX_MSG_LEN){
+                if(llen >= MAX_SOCK_LEN){
                     rval = 1;
                     fprintf(stderr, "msg is too long\n");
                     goto func_exit;
@@ -1157,7 +1345,7 @@ int send_info(int reqfd, void *cli)
                 if(status_data[i].pvalue == NULL) break;
                 sprintf(buf, "%s|", status_data[i].name);
                 llen += strlen(buf);
-                if(llen >= MAX_MSG_LEN){
+                if(llen >= MAX_SOCK_LEN){
                     rval = 1;
                     fprintf(stderr, "msg is too long\n");
                     goto func_exit;
@@ -1165,7 +1353,7 @@ int send_info(int reqfd, void *cli)
                 strcat(msg.buf, buf);
                 sprintf(buf, "%s|", status_data[i].pvalue);
                 llen += strlen(buf);
-                if(llen >= MAX_MSG_LEN){
+                if(llen >= MAX_SOCK_LEN){
                     rval = 1;
                     fprintf(stderr, "msg is too long\n");
                     goto func_exit;
@@ -1179,7 +1367,7 @@ int send_info(int reqfd, void *cli)
     len += strlen(msg.buf)+1;
 
     //printf("node = %-2d, type = %-2d, msg = [%s]\n", msg.node, msg.type, msg.buf);
-    //sendto(reqfd, &msg, MMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
+    //sendto(reqfd, &msg, SMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
     sendto(reqfd, &msg, len, 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
 
 func_exit:

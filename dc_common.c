@@ -261,7 +261,9 @@ void _del_node(node_s *node)
         }
     }
 
-    //printf("%s is freeing %s\n", __func__, node->name);
+#if 0
+    fprintf(stderr, "%s is freeing %s\n", __func__, node->name);
+#endif
     if(node->pvalue != NULL){
         free(node->pvalue);
         node->pvalue = NULL;
@@ -301,6 +303,30 @@ int del_node(node_s *node, const char *name)
             p = p->next;
         }
     }
+
+func_exit:
+    return rval;
+}
+
+/*
+ * func:
+ *      remove all childs of a node
+ */
+int remove_childs(node_s *node){
+    int rval = 0;
+    node_l *p, *temp;
+
+    p = node->child_h.next;
+
+    while(p != NULL){
+        temp = p;
+        p = p->next;
+        _del_node(temp->pnode);
+        free(temp);
+    }
+
+    node->child_h.next = NULL;
+    node->child_t.next = NULL;
 
 func_exit:
     return rval;
@@ -438,6 +464,37 @@ void free_rdata(rdata_s *h)
         //printf("free %s success\n", temp->name);
         free(temp->pvalue);
         free(temp);
+    }
+
+    return ;
+}
+
+/*
+ * func:
+ *      modify the value of 'pvalue' according to 'value'
+ */
+void modify_value(char **pvalue, char *value)
+{
+    unsigned int len;
+
+    if(value == NULL){
+        if(*pvalue != NULL){
+            free(*pvalue);
+            *pvalue = NULL;
+        }
+    }else{
+        len = strlen(value);
+
+        if(*pvalue == NULL){
+            *pvalue = (char*)malloc(len+1);
+        }else{
+            if(strlen(*pvalue) < len){
+                free(*pvalue);
+                *pvalue = (char*)malloc(len+1);
+            }
+        }
+
+        strcpy(*pvalue, value);
     }
 
     return ;

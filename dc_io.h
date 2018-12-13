@@ -25,7 +25,6 @@ int io_audioEnable(int, char, char*);
 int io_audioVol(int, char, char*);
 
 int getnumfromstr(char*);
-void modify_value(char**, char*);
 int modify_ini(const char*, const char*, const char*);
 int modify_file(const char*, const char*, const char*, const char*, const char*);
 int file_size(const char*);
