@@ -473,7 +473,7 @@ void free_rdata(rdata_s *h)
  * func:
  *      modify the value of 'pvalue' according to 'value'
  */
-void modify_value(char **pvalue, char *value)
+void modify_value(char **pvalue, const char *value)
 {
     unsigned int len;
 
@@ -500,5 +500,50 @@ void modify_value(char **pvalue, char *value)
     return ;
 }
 
+/*
+ * func:
+ *      read ip from string
+ * params:
+ *      buf:            ip string
+ *      ip:             an 'int' type array to store ipaddress
+ */
+int read_ipaddr(const char *buf, int *ip)
+{
+    int rval = 0;
 
+    sscanf(buf, "%u.%u.%u.%d", &ip[0], &ip[1], &ip[2], &ip[3]);
 
+    return rval;
+}
+
+/*
+ * func:
+ *      judge whether ip is NULL
+ */
+int ipisnull(const char *buf)
+{
+    int ip[4];
+
+    read_ipaddr(buf, ip);
+    if((ip[0] == 0) && (ip[1] == 0) && (ip[2] == 0) && (ip[3] == 0)){
+        return 1;
+    }else return 0;
+
+    return 0;
+}
+
+/*
+ * func:
+ *      judge whether ip is host
+ */
+int ipishost(const char *buf)
+{
+    int ip[4];
+
+    read_ipaddr(buf, ip);
+    if(ip[3] > 0){
+        return 1;
+    }else return 0;
+
+    return 0;
+}

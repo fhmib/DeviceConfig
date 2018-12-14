@@ -3,6 +3,8 @@
 extern pthread_mutex_t pmutex;
 extern U8 sa;
 
+extern int mn_qid, dc_qid;
+
 extern sdata_s status_data[];
 extern int status_cnt;
 
@@ -19,9 +21,12 @@ char buf_alcvol[] = "/home/bin/amixer cset numid=102,iface=MIXER,name='ALC Captu
 char buf_audio[] = "/home/rzxt_mesh/aaf0216/";
 
 extern char port_flag[];
+extern char route_flag[];
 
 int name_arr[] = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300};
 
+//store the return address of function mmap()
+void *g_FPGA_pntr = NULL;
 
 
 
@@ -292,6 +297,81 @@ func_exit:
     return rval; 
 }
 
+int io_tfci(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    mmsg_t msg;
+    int len = 0;
+    mnhd_t *mnhd;
+    U32 set_tfci;
+
+    if(mode == 0){
+        rval = 1;
+        goto func_exit;
+    }else{
+        sscanf(pvalue, "%u", &set_tfci);
+        //fprintf(stderr, "%s:pvalue[%s], set_tfci:%u\n", __func__, pvalue, set_tfci);
+
+        msg.mtype = MMSG_MN_RESET;
+        msg.node = 5;
+        len += sizeof(msg.node);
+
+        mnhd = (mnhd_t*)msg.data;
+        mnhd->type = RESET_SET_AAR;
+        len += MNHD_LEN;
+
+        *(msg.data + MNHD_LEN) = set_tfci;
+        len += sizeof(set_tfci);
+
+#if !ON_BOARD
+#if 0
+        int i;
+        char output;
+        fprintf(stderr, "msg: ");
+        for(i = 0; i < len+sizeof(msg.mtype); i++){
+            output = (*((char*)&msg + i)) & (char)0xFF;
+            fprintf(stderr, "%d:0x%x ", i, output);
+        }
+        fprintf(stderr, "\n");
+#endif
+        fprintf(stderr, "mtype:%ld ", msg.mtype);
+        fprintf(stderr, "node:%u ", msg.node);
+        fprintf(stderr, "type:%ld ", mnhd->type);
+        fprintf(stderr, "set_tfci:%u ", (U32)(*(msg.data + MNHD_LEN)));
+        fprintf(stderr, "\n");
+#else
+        msgsnd(mn_qid, &msg, len, 0);
+#endif
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_txPower(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    int rd_data;
+
+    if(mode == 0){
+        rval = 1;
+        goto func_exit;
+    }else{
+        rd_data = abs(atoi((char*)pvalue));
+        rd_data = 4 * rd_data;
+
+#if !ON_BOARD
+        fprintf(stderr, "%s:0x%x\n", __func__, rd_data);
+#else
+        ad9361_write(0x73, rd_data);
+        ad9361_write(0x75, rd_data);
+#endif
+    }
+
+func_exit:
+    return rval;
+}
+
 int io_dataRate(int index, char mode, char *pvalue)
 {
     int rval = 0;
@@ -350,6 +430,26 @@ func_exit:
     return rval;
 }
 
+int io_route(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    int i;
+
+    if(mode == 0){
+        rval = 1;
+        goto func_exit;
+    }else{
+        i = getnumfromstr(config_t[index].name);
+        if(route_flag[i] == 0){
+            del_route(i);
+        }
+        route_flag[i] = 1;
+    }
+
+func_exit:
+    return rval;
+}
+
 int io_audioEnable(int index, char mode, char *pvalue)
 {
     int rval = 0;
@@ -360,15 +460,30 @@ int io_audioEnable(int index, char mode, char *pvalue)
         rval = 1;
         goto func_exit;
     }else if(mode == 2){
-        sprintf(buf, "killall " AUDIO_NAME);
+        sscanf(pvalue, "%d", &value);
+        if(value != 0){
+            sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
+            usleep(100000);
 
 #if PRINT_COMMAND
-        fprintf(stderr, "%s\n", buf);
+            fprintf(stderr, "%s\n", buf);
 #endif
 #if ON_BOARD
-        system(buf);
+            system(buf);
+#endif
+        }else{
+            sprintf(buf, "killall " AUDIO_NAME);
+
+#if PRINT_COMMAND
+            fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+            system(buf);
 #endif
 
+        }
+
+    }else if(mode == 1){
         sscanf(pvalue, "%d", &value);
         if(value != 0){
             sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
@@ -381,9 +496,6 @@ int io_audioEnable(int index, char mode, char *pvalue)
             system(buf);
 #endif
         }
-
-    }else{
-        rval = 0;
     }
 
 func_exit:
@@ -1008,5 +1120,260 @@ int set_uart(int fd, int speed, int flow_ctrl, int databits, int stopbits, char 
 
 func_exit:
     return rval;
+}
+
+int ad9361_write(int addr, int data)
+{
+    int rd_data = 0;
+    int i = 0;
+    int rval = 0;
+    int fd;
+
+    for(i = 1; i < 100; i++){
+        rd_data = drvFPGA_Read(ADDR_9361_SPI_BUSY);
+        if(!(rd_data & 0x100)) break;
+    }
+    drvFPGA_Write(AD9361_BASE_ADDR + (addr<<2), (data & 0xFF));
+
+func_exit:
+    return rval;
+}
+
+int drvFPGA_Read(int io_addr)
+{
+    int io_data = 0;
+    int rval = 0;
+    int fd;
+
+    io_data = _FPGA_IO_(io_addr);
+    fprintf(stderr, "%s:io_addr:0x%x io_data:%d\n", __func__, io_addr, io_data);
+
+func_exit:
+    return io_data;
+}
+
+int drvFPGA_Write(int io_addr, int io_data)
+{
+    fprintf(stderr, "%s, %d:g_FPGA_pntr = 0x%x, io_addr = 0x%x, io_data = 0x%x\n", __func__, __LINE__, g_FPGA_pntr, io_addr, io_data);
+    _FPGA_IO_(io_addr) = io_data;
+
+    return 0;
+}
+
+int drvFPGA_Init(int *p_fd)
+{
+    int fd = 0;
+
+    fd = open(DEVNAME, O_RDWR | O_SYNC);
+    if(fd < 0){
+        fprintf(stderr, "%s:can not open /dev/mem\n", __func__);
+        return 1;
+    }
+
+
+    g_FPGA_pntr = mmap(0, 65536, PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, fd, FPGA_ADDR_BASE);
+    if(g_FPGA_pntr == NULL){
+        fprintf(stderr, "%s,%d:can not open mmap\n", __func__, __LINE__);
+        close(fd);
+        return 2;
+    }
+    else if(g_FPGA_pntr == (void*)-1){
+        fprintf(stderr, "%s,%d:can not open mmap\n", __func__, __LINE__);
+        close(fd);
+        return 3;
+    }
+    
+    //fprintf(stderr, "%s, %d:g_FPGA_pntr = 0x%x\n", __func__, __LINE__, g_FPGA_pntr);
+    *p_fd = fd;
+    return 0;
+}
+
+int drvFPGA_Close(int *p_fd)
+{
+    int fd = *p_fd;
+
+    close(fd);
+    munmap(g_FPGA_pntr, 65536);
+    *p_fd = 0;
+    g_FPGA_pntr = NULL;
+
+    return 0;
+}
+
+void del_route(int index)
+{
+    char *onet, *omask, *ogate;
+    int i;
+    char buf[128];
+
+    sprintf(buf, "staticRoute%dNetwork", index);
+    for(i = 0; i < config_cnt; i++){
+        if(strcmp(config_t[i].name, buf) == 0){
+            onet = config_t[i].pvalue;
+            break;
+        }
+    }
+    if(onet == NULL){
+        fprintf(stderr, "%s:onet is NULL\n", __func__);
+        goto func_exit;
+    }
+
+    if(ipisnull(onet)){
+        sprintf(buf, "staticRoute%dGateWay", index);
+        for(i = 0; i < config_cnt; i++){
+            if(strcmp(config_t[i].name, buf) == 0){
+                ogate = config_t[i].pvalue;
+                break;
+            }
+        }
+        if(ogate == NULL){
+            fprintf(stderr, "%s:ogate is NULL\n", __func__);
+            goto func_exit;
+        }
+
+        if(ipisnull(ogate)){
+            goto func_exit;
+        }else{
+            sprintf(buf, "route del -net %s gw %s", onet, ogate);
+#if PRINT_COMMAND
+            fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+            system(buf);
+#endif
+        }
+
+    }else if(ipishost(onet)){
+        sprintf(buf, "staticRoute%dGateWay", index);
+        for(i = 0; i < config_cnt; i++){
+            if(strcmp(config_t[i].name, buf) == 0){
+                ogate = config_t[i].pvalue;
+                break;
+            }
+        }
+        if(ogate == NULL){
+            fprintf(stderr, "%s:ogate is NULL\n", __func__);
+            goto func_exit;
+        }
+
+        if(ipisnull(ogate)){
+            goto func_exit;
+        }else{
+            sprintf(buf, "route del -host %s", onet);
+#if PRINT_COMMAND
+            fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+            system(buf);
+#endif
+        }
+    }else{
+        sprintf(buf, "staticRoute%dSubMask", index);
+        for(i = 0; i < config_cnt; i++){
+            if(strcmp(config_t[i].name, buf) == 0){
+                omask = config_t[i].pvalue;
+                break;
+            }
+        }
+        if(omask == NULL){
+            fprintf(stderr, "%s:omask is NULL\n", __func__);
+            goto func_exit;
+        }
+
+        if(ipisnull(omask)){
+            goto func_exit;
+        }else{
+            sprintf(buf, "route del -net %s netmask %s", onet, omask);
+#if PRINT_COMMAND
+            fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+            system(buf);
+#endif
+        }
+    }
+
+func_exit:
+    return ;
+}
+
+void config_route(int which)
+{
+    char *onet = NULL;
+    char *omask = NULL;
+    char *ogate = NULL;
+    int i;
+    char cmd[128];
+    char nbuf[32], mbuf[32], gbuf[32];
+
+    sprintf(nbuf, "staticRoute%dNetwork", which);
+    sprintf(mbuf, "staticRoute%dSubMask", which);
+    sprintf(gbuf, "staticRoute%dGateWay", which);
+    for(i = 0; i < config_cnt; i++){
+        if(strcmp(config_t[i].name, nbuf) == 0){
+            onet = config_t[i].pvalue;
+        }else if(strcmp(config_t[i].name, mbuf) == 0){
+            omask = config_t[i].pvalue;
+        }else if(strcmp(config_t[i].name, gbuf) == 0){
+            ogate = config_t[i].pvalue;
+        }
+    }
+    if(onet == NULL){
+        fprintf(stderr, "%s:onet is NULL\n", __func__);
+        goto func_exit;
+    }
+    if(omask == NULL){
+        fprintf(stderr, "%s:omask is NULL\n", __func__);
+        goto func_exit;
+    }
+    if(ogate == NULL){
+        fprintf(stderr, "%s:ogate is NULL\n", __func__);
+        goto func_exit;
+    }
+
+    if(ipisnull(onet)){
+        if(ipisnull(ogate)){
+            goto func_exit;
+        }else{
+            sprintf(cmd, "route add -net %s gw %s", onet, ogate);
+#if PRINT_COMMAND
+            fprintf(stderr, "%s\n", cmd);
+#endif
+#if ON_BOARD
+            system(cmd);
+#endif
+        }
+    }else if(ipishost(onet)){           //ipaddress is host
+        if(ipisnull(ogate)){
+            goto func_exit;
+        }else{
+            sprintf(cmd, "route add -host %s gw %s", onet, ogate);
+#if PRINT_COMMAND
+            fprintf(stderr, "%s\n", cmd);
+#endif
+#if ON_BOARD
+            system(cmd);
+#endif
+        }
+    }else{                              //ipaddress is network
+        if(ipisnull(omask)){
+            goto func_exit;
+        }else{
+            if(ipisnull(ogate)){
+                goto func_exit;
+            }else{
+                sprintf(cmd, "route add -net %s netmask %s gw %s", onet, omask, ogate);
+#if PRINT_COMMAND
+                fprintf(stderr, "%s\n", cmd);
+#endif
+#if ON_BOARD
+                system(cmd);
+#endif
+            }
+        }
+    }
+
+func_exit:
+    return ;
 }
 

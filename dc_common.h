@@ -16,6 +16,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <time.h>
+#include <sys/mman.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
@@ -28,7 +29,7 @@
 #define U32                         unsigned int
 #define U64                         unsigned long long
 
-#define ON_BOARD                    1
+#define ON_BOARD                    0
 #define PRINT_COMMAND               1
 #define SOCKET_TEST                 1
 
@@ -72,12 +73,16 @@
 #define MAX_NODE_CNT                32
 #define MAX_TIMEOUT                 15
 #define PORT_CNT                    1
+#define ROUTE_CNT                   4
 
 #define MMAX(a,b)                   ((a > b) ? a : b)
 
 #define CNAME_NODEID                "nodeId"
 #define CNAME_NODENAME              "nodeName"
 #define CNAME_MESHID                "meshId"
+#define CNAME_CHANBW                "chanBandwidth"
+#define CNAME_TFCI                  "tfci"
+#define CNAME_TXPOWER               "TXPower"
 #define CNAME_IPADDRESS             "ipAddress"
 #define CNAME_IPMASK                "ipMask"
 #define CNAME_IPGATEWAY             "ipGateway"
@@ -87,6 +92,18 @@
 #define CNAME_AUDIOALC              "audioMuteLevel"
 #define CNAME_UART0RATE             "data0BaudRate"
 #define CNAME_UART0PARITY           "data0Parity"
+#define CNAME_ROUTE0ADDR            "staticRoute0Network"
+#define CNAME_ROUTE1ADDR            "staticRoute1Network"
+#define CNAME_ROUTE2ADDR            "staticRoute2Network"
+#define CNAME_ROUTE3ADDR            "staticRoute3Network"
+#define CNAME_ROUTE0MASK            "staticRoute0SubMask"
+#define CNAME_ROUTE1MASK            "staticRoute1SubMask"
+#define CNAME_ROUTE2MASK            "staticRoute2SubMask"
+#define CNAME_ROUTE3MASK            "staticRoute3SubMask"
+#define CNAME_ROUTE0GATE            "staticRoute0GateWay"
+#define CNAME_ROUTE1GATE            "staticRoute1GateWay"
+#define CNAME_ROUTE2GATE            "staticRoute2GateWay"
+#define CNAME_ROUTE3GATE            "staticRoute3GateWay"
 
 #define CNAME_BOARDTYPE             "boardType"
 #define CNAME_SERIAL                "serialNumber"
@@ -274,7 +291,10 @@ void mod_node(node_s*, const char*);
 node_s *search_node(node_s*,const char*);
 rdata_s *read_json(const char*, const char*);
 void free_rdata(rdata_s*);
-void modify_value(char**, char*);
+void modify_value(char**, const char*);
+int read_ipaddr(const char*, int*);
+int ipisnull(const char*);
+int ipishost(const char*);
 
 
 

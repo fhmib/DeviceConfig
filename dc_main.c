@@ -11,6 +11,8 @@ int dc_qid = -1;
 int mc_fd;
 struct sockaddr_in mc_addr;
 
+extern void *g_FPGA_pntr;
+
 //for status.json
 node_s *status_root;
 node_s *sflags;
@@ -92,9 +94,9 @@ sdata_s config_t[] = {
     {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, "main"},
     {JSON_STRING, CNAME_MESHID, NULL, NULL, "main"},
     {JSON_STRING, "centreFreq", NULL, NULL, "main"},
-    {JSON_STRING, "chanBandwidth", NULL, &io_chanBW, "main"},
-    {JSON_STRING, "TX1Power", NULL, NULL, "main"},
-    {JSON_STRING, "TX2Power", NULL, NULL, "main"},
+    {JSON_STRING, CNAME_CHANBW, NULL, &io_chanBW, "main"},
+    {JSON_STRING, CNAME_TFCI, NULL, &io_tfci, "main"},
+    {JSON_STRING, CNAME_TXPOWER, NULL, &io_txPower, "main"},
     {JSON_STRING, "reduceMimo", NULL, NULL, "main"},
     {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, "main"},
     {JSON_STRING, CNAME_IPMASK, NULL, &io_ipMask, "main"},
@@ -108,6 +110,18 @@ sdata_s config_t[] = {
     //{JSON_STRING, "data0StopBits", NULL, NULL, "dataPort"},
     //{JSON_STRING, "data0FlowControl", NULL, NULL, "dataPort"},
     //{JSON_STRING, "data0Width", NULL, NULL, "dataPort"},
+    {JSON_STRING, CNAME_ROUTE0ADDR, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE0MASK, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE0GATE, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE1ADDR, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE1MASK, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE1GATE, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE2ADDR, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE2MASK, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE2GATE, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE3ADDR, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE3MASK, NULL, &io_route, "staticRoute"},
+    {JSON_STRING, CNAME_ROUTE3GATE, NULL, &io_route, "staticRoute"},
 };
 int config_cnt = sizeof(config_t)/sizeof(config_t[0]);
 
@@ -123,6 +137,8 @@ struct timeval now_tv = {0,0};
 
 //for config serial port
 char port_flag[PORT_CNT] = {0};
+//for config route
+char route_flag[ROUTE_CNT] = {0};
 
 int main(int argc, char *argv[])
 {
@@ -147,7 +163,17 @@ int main(int argc, char *argv[])
 
     init_tree();
 
+#if 0
+    int i;
+    for(i = 0; i < config_cnt; i++){
+        if(config_t[i].pvalue != NULL)
+            printf("%s:%s\n", config_t[i].name, config_t[i].pvalue);
+    }
+#endif
+
     config_device();
+    usleep(500000);
+    update_status();
 
     gen_json(STATUS_PATH, status_root);
     gen_json(CONFIG_PATH, config_root);
@@ -280,7 +306,7 @@ int init_tree()
         insert_node(snode_data[i], create_node(JSON_STRING, "timeout", "0"));
     }
     mod_node(snode_data[sa-1]->child_h.next->pnode, "15");
-    update_status();
+    //update_status();
 
     //initialize signal quality table
     for(i = 0; i < MAX_NODE_CNT; i++){
@@ -330,6 +356,16 @@ int config_device()
     int rval = 0;
     int i, times;
 
+#if ON_BOARD
+    int fd;
+    rval = drvFPGA_Init(&fd);
+    if(rval){
+        fprintf(stderr, "%s:initialize drvFPGA failed\n", __func__);
+        rval = 1;
+        goto func_exit;
+    }
+#endif
+
     for(i = 0; i < config_cnt; i++){
         if(config_t[i].pfunc == NULL){
             continue;
@@ -337,6 +373,10 @@ int config_device()
             //printf("%s: configuring %s, value = %s\n", __func__, config_t[i].name, config_t[i].pvalue);
             times = 0;
             while(1){
+                if(config_t[i].pvalue == NULL){
+                    fprintf(stderr, "%s configured failed, pvalue is NULL\n", config_t[i].name);
+                    break;
+                }
                 rval = (*config_t[i].pfunc)(i, 1, config_t[i].pvalue);
                 if(rval){
                     fprintf(stderr, "%s configured failed, try again, rval = %d, times = %d\n", config_t[i].name, rval, times++);
@@ -354,6 +394,13 @@ int config_device()
     }
 
     add_config();
+
+func_exit:
+#if ON_BOARD
+    if(g_FPGA_pntr != NULL){
+        drvFPGA_Close(&fd);
+    }
+#endif
 
     return 0;
 }
@@ -981,6 +1028,16 @@ int cmp_config(rdata_s *rdata)
     node_s *node;
     int rval = 0;
 
+#if ON_BOARD
+    int fd;
+    rval = drvFPGA_Init(&fd);
+    if(rval){
+        fprintf(stderr, "%s:initialize drvFPGA failed\n", __func__);
+        rval = 1;
+        goto func_exit;
+    }
+#endif
+
     while(rdata != NULL){
         for(i = 0; i < config_cnt; i++){
             if(strcmp(rdata->name, config_t[i].name) == 0){
@@ -1022,6 +1079,12 @@ int cmp_config(rdata_s *rdata)
 
     add_config();
 
+func_exit:
+#if ON_BOARD
+    if(g_FPGA_pntr != NULL){
+        drvFPGA_Close(&fd);
+    }
+#endif
     return flag;
 }
 
@@ -1031,6 +1094,7 @@ int add_config()
     int rval = 0;
     int i;
 
+    //config port
     for(i = 0; i < PORT_CNT; i++){
         //fprintf(stderr, "%d\n", port_flag[i]);
         if(port_flag[i]){
@@ -1040,6 +1104,12 @@ int add_config()
             }
             port_flag[i] = 0;
         }
+    }
+    
+    //config route
+    for(i = 0; i < ROUTE_CNT; i++){
+        config_route(i);
+        port_flag[i] = 0;
     }
 
 func_exit:
