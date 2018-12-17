@@ -1,5 +1,8 @@
 {
-    "config": "0",
+    "flags": {
+        "config": "0",
+        "reset": "0"
+    },
     "settings": {
         "main": {
             "nodeId": "4",
@@ -7,9 +10,9 @@
             "meshId": "157",
             "centreFreq": "1395",
             "chanBandwidth": "5",
-            "tfci": "8",
+            "tfci": "255",
             "TXPower": "5",
-            "reduceMimo": "1",
+            "reduceMimo": "0",
             "ipAddress": "192.168.0.4",
             "ipMask": "255.255.255.0",
             "ipGateway": "192.168.0.1"
@@ -24,7 +27,7 @@
             "data0BaudRate": "115200",
             "data0Parity": "None"
         },
-		"staticRoute": {
+        "staticRoute": {
             "staticRoute0Network": "0.0.0.0",
             "staticRoute0SubMask": "0.0.0.0",
             "staticRoute0GateWay": "0.0.0.0",
@@ -37,6 +40,6 @@
             "staticRoute3Network": "0.0.0.0",
             "staticRoute3SubMask": "0.0.0.0",
             "staticRoute3GateWay": "0.0.0.0"
-		}
+        }
     }
 }

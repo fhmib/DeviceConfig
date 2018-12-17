@@ -13,6 +13,8 @@
 #include <termios.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <netpacket/packet.h>
+#include <net/ethernet.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <time.h>
@@ -107,6 +109,7 @@
 
 #define CNAME_BOARDTYPE             "boardType"
 #define CNAME_SERIAL                "serialNumber"
+#define CNAME_MACADDR               "macAddress"
 
 #define CNAME_NETSTATUS             "netStatus"
 #define CNAME_TBS                   "tbsAddress"
@@ -176,6 +179,7 @@ typedef struct _node_s{
     node_l child_t;        //tail of child
 }node_s;
 
+#if 0
 //struct for store read-only data
 typedef struct _odata_s{
     char name[64];
@@ -190,6 +194,7 @@ typedef struct _data_s{
     int *(*pfunc)(char*, int);    //pointer to function reads/writes value of the parameter
     char fname[64];                 //father's name of tree
 }data_s;
+#endif
 
 //struct for store status data and transfer
 typedef struct _sdata_s{
@@ -252,7 +257,7 @@ typedef struct _mac_state{
 
 void print_info(char*);
 int init_tree();
-int config_device();
+int init_device();
 void update_rdonly();
 void update_sig();
 void update_info();

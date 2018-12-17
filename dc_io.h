@@ -13,6 +13,9 @@
 
 int io_undo(int, char, char*);
 
+int io_readInfo(int, char, char*);
+int io_macAddr(int, char, char*);
+
 int io_ipTxByteCnt(int, char, char*);
 int io_ipTxPktCnt(int, char, char*);
 int io_ipTxErrorCnt(int, char, char*);

@@ -8,6 +8,8 @@ extern int mn_qid, dc_qid;
 extern sdata_s status_data[];
 extern int status_cnt;
 
+extern sdata_s info_t[];
+
 extern U64 txbytes, txpackets, txerrors; 
 extern U64 rxbytes, rxpackets, rxerrors; 
 extern struct timeval now_tv, pre_tv;
@@ -46,6 +48,55 @@ void *g_FPGA_pntr = NULL;
 
 int io_undo(int index, char mode, char *pvalue)
 {
+    return 0;
+}
+
+int io_readInfo(int index, char mode, char *pvalue)
+{
+    rdata_s *pd = NULL;
+
+    pd = read_json(INFO_PATH, info_t[index].name);
+    if(pd != NULL){
+        modify_value(&info_t[index].pvalue, pd->pvalue);
+    }else{
+        goto func_exit;
+    }
+
+func_exit:
+    if(pd != NULL){
+        free_rdata(pd);
+    }
+    return 0;
+}
+
+int io_macAddr(int index, char mode, char *pvalue)
+{
+    struct ifaddrs *ifa, *ifaddr = NULL;
+    struct sockaddr_ll *mac_addr;
+    char buf[32], temp[8];
+    int i;
+
+    if(getifaddrs(&ifaddr) < 0){
+        perror("getifaddrs");
+        goto func_exit;
+    }
+
+    for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next){
+        if(ifa->ifa_addr->sa_family != AF_PACKET) continue;
+        if(strcmp(ifa->ifa_name, NET_DEV_NAME) != 0) continue;
+        buf[0] = 0;
+        mac_addr = (struct sockaddr_ll*)ifa->ifa_addr;
+        for(i = 0; i < 6; i++){
+            sprintf(temp, "%02x%s", mac_addr->sll_addr[i], (i<5)?":":"");
+            strcat(buf, temp);
+        } 
+        modify_value(&info_t[index].pvalue, buf);
+    }
+
+func_exit:
+    if(ifaddr != NULL){
+        freeifaddrs(ifaddr);
+    }
     return 0;
 }
 
@@ -320,7 +371,7 @@ int io_tfci(int index, char mode, char *pvalue)
         mnhd->type = RESET_SET_AAR;
         len += MNHD_LEN;
 
-        *(msg.data + MNHD_LEN) = set_tfci;
+        *(msg.data + MNHD_LEN) = (U8)set_tfci;
         len += sizeof(set_tfci);
 
 #if !ON_BOARD
@@ -337,7 +388,7 @@ int io_tfci(int index, char mode, char *pvalue)
         fprintf(stderr, "mtype:%ld ", msg.mtype);
         fprintf(stderr, "node:%u ", msg.node);
         fprintf(stderr, "type:%ld ", mnhd->type);
-        fprintf(stderr, "set_tfci:%u ", (U32)(*(msg.data + MNHD_LEN)));
+        fprintf(stderr, "set_tfci:%u ", 0x000000FF&((U32)(*(msg.data + MNHD_LEN))));
         fprintf(stderr, "\n");
 #else
         msgsnd(mn_qid, &msg, len, 0);
@@ -1154,7 +1205,7 @@ func_exit:
 
 int drvFPGA_Write(int io_addr, int io_data)
 {
-    fprintf(stderr, "%s, %d:g_FPGA_pntr = 0x%x, io_addr = 0x%x, io_data = 0x%x\n", __func__, __LINE__, g_FPGA_pntr, io_addr, io_data);
+    //fprintf(stderr, "%s, %d:g_FPGA_pntr = 0x%x, io_addr = 0x%x, io_data = 0x%x\n", __func__, __LINE__, g_FPGA_pntr, io_addr, io_data);
     _FPGA_IO_(io_addr) = io_data;
 
     return 0;

@@ -25,12 +25,15 @@ node_s *snode_data[MAX_NODE_CNT];
 //genernal timers for process
 static timers_s gts;
 
+#if 0
 //read-only data
+//absoleted
 odata_s rdonly_data[] = {
-    {"serialNumber", NULL},
-    {"boardType", NULL}
+    {CNAME_SERIAL, NULL},
+    {CNAME_BOARDTYPE, NULL},
 };
 int rdonly_cnt = sizeof(rdonly_data)/sizeof(rdonly_data[0]);
+#endif
 
 //local status table
 sdata_s status_data[] = {
@@ -50,13 +53,14 @@ sdata_s status_data[] = {
 int status_cnt = sizeof(status_data)/sizeof(status_data[0]);
 
 //information table
-data_s info_t[] = {
-    {"softwareVersion", NULL, NULL, ""},
-    {"protocolVersion", NULL, NULL, ""},
-    {"fpgaVersion", NULL, NULL, ""},
-    {"serialNumber", NULL, NULL, ""},
-    {CNAME_BOARDTYPE, NULL, NULL, ""},
-    {"phyAddress", NULL, NULL, ""}
+sdata_s info_t[] = {
+    {JSON_STRING, "softwareVersion", NULL, NULL, "null"},
+    {JSON_STRING, "protocolVersion", NULL, NULL, "null"},
+    {JSON_STRING, "fpgaVersion", NULL, NULL, "null"},
+    {JSON_STRING, CNAME_SERIAL, NULL, &io_readInfo, "null"},
+    {JSON_STRING, CNAME_BOARDTYPE, NULL, &io_readInfo, "null"},
+    {JSON_STRING, CNAME_MACADDR, NULL, &io_macAddr, "null"},
+    {JSON_STRING, "phyAddress", NULL, NULL, "null"}
 };
 int info_cnt = sizeof(info_t)/sizeof(info_t[0]);
 
@@ -171,7 +175,7 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    config_device();
+    init_device();
     usleep(500000);
     update_status();
 
@@ -216,8 +220,10 @@ int init_tree()
     char init_flag = 0;
     char buf[1024], temp[32];
 
+#if 0
     //initialize read-only data
     update_rdonly();
+#endif
 
     //initialize config
     config_root = create_node(JSON_BRACKET, NULL, NULL);
@@ -340,7 +346,7 @@ int init_tree()
         insert_node(sinformation, create_node(JSON_STRING, info_t[i].name, info_t[i].pvalue));
     }
 
-#if 0
+#if ON_BOARD
     update_dvlp();
 #endif
     for(i = 0; i < dvlp_cnt; i++){
@@ -351,7 +357,7 @@ func_exit:
     return 0;
 }
 
-int config_device()
+int init_device()
 {
     int rval = 0;
     int i, times;
@@ -405,6 +411,7 @@ func_exit:
     return 0;
 }
 
+#if 0
 void update_rdonly()
 {
     int i, j;
@@ -454,6 +461,7 @@ func_exit:
     }
     return ;
 }
+#endif
 
 void update_sig()
 {
@@ -464,20 +472,15 @@ void update_sig()
 
 void update_info()
 {
-    /*
     char buf[64];
-    int i, cnt;
+    int i;
 
-    cnt = sizeof(info_t)/sizeof(data_s);
     strcpy(buf, "1.1");
-    for(i = 0; i < cnt; i++){
-        if(info_t[i].pvalue == NULL){
-            info_t[i].pvalue = (char*)malloc(strlen(buf)+1);
-            strcpy(info_t[i].pvalue, buf);
-        }else{
-        }
+    for(i = 0; i < info_cnt; i++){
+        if(info_t[i].pfunc == NULL) continue;
+
+        (*info_t[i].pfunc)(i, 0, NULL);
     }
-    */
 
     return ;
 }
@@ -1109,7 +1112,7 @@ int add_config()
     //config route
     for(i = 0; i < ROUTE_CNT; i++){
         config_route(i);
-        port_flag[i] = 0;
+        route_flag[i] = 0;
     }
 
 func_exit:
