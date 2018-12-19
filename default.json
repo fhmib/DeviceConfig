@@ -1,45 +1,51 @@
 {
-    "flags": {
-        "config": "0",
-        "reset": "0"
-    },
-    "settings": {
-        "main": {
-            "nodeId": "4",
-            "nodeName": "2WL-1608004",
-            "meshId": "157",
-            "centreFreq": "1395",
-            "chanBandwidth": "5",
-            "tfci": "255",
-            "TXPower": "5",
-            "reduceMimo": "0",
-            "ipAddress": "192.168.0.4",
-            "ipMask": "255.255.255.0",
-            "ipGateway": "192.168.0.1"
-        },
-        "audio": {
-            "audioEnable": "1",
-            "audioHeadGain": "45",
-            "audioMicGain": "45",
-            "audioMuteLevel": "20"
-        },
-        "dataPort": {
-            "data0BaudRate": "115200",
-            "data0Parity": "None"
-        },
-        "staticRoute": {
-            "staticRoute0Network": "0.0.0.0",
-            "staticRoute0SubMask": "0.0.0.0",
-            "staticRoute0GateWay": "0.0.0.0",
-            "staticRoute1Network": "0.0.0.0",
-            "staticRoute1SubMask": "0.0.0.0",
-            "staticRoute1GateWay": "0.0.0.0",
-            "staticRoute2Network": "0.0.0.0",
-            "staticRoute2SubMask": "0.0.0.0",
-            "staticRoute2GateWay": "0.0.0.0",
-            "staticRoute3Network": "0.0.0.0",
-            "staticRoute3SubMask": "0.0.0.0",
-            "staticRoute3GateWay": "0.0.0.0"
-        }
-    }
+	"flags": {
+		"config": "0",
+		"reset": "0"
+	},
+	"main": {
+		"nodeId": "4",
+		"nodeName": "2WL-1608004",
+		"meshId": "157",
+		"centreFreq": "1395",
+		"chanBandwidth": "5",
+		"tfci": "255",
+		"TXPower": "5",
+		"reduceMimo": "0",
+		"ipAddress": "192.168.0.4",
+		"ipMask": "255.255.255.0",
+		"ipGateway": "192.168.0.1"
+	},
+	"audio": {
+		"audioEnable": "1",
+		"audioHeadGain": "45",
+		"audioMicGain": "45",
+		"audioMuteLevel": "20"
+	},
+	"dataPort": {
+		"data0BaudRate": "115200",
+		"data0Parity": "None"
+	},
+	"staticRoute": {
+		"staticRoute0": {
+			"staticRoute0Network": "0.0.0.0",
+			"staticRoute0SubMask": "0.0.0.0",
+			"staticRoute0GateWay": "0.0.0.0"
+		},
+		"staticRoute1": {
+			"staticRoute1Network": "0.0.0.0",
+			"staticRoute1SubMask": "0.0.0.0",
+			"staticRoute1GateWay": "0.0.0.0"
+		},
+		"staticRoute2": {
+			"staticRoute2Network": "0.0.0.0",
+			"staticRoute2SubMask": "0.0.0.0",
+			"staticRoute2GateWay": "0.0.0.0"
+		},
+		"staticRoute3": {
+			"staticRoute3Network": "0.0.0.0",
+			"staticRoute3SubMask": "0.0.0.0",
+			"staticRoute3GateWay": "0.0.0.0"
+		}
+	}
 }

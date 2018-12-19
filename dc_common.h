@@ -79,6 +79,19 @@
 
 #define MMAX(a,b)                   ((a > b) ? a : b)
 
+#define CNAME_NULL                  "null"
+#define CNAME_DVLP                  "developer"
+#define CNAME_FLAGS                 "flags"
+#define CNAME_CONFIG                "config"
+#define CNAME_RESET                 "reset"
+#define CNAME_MAIN                  "main"
+#define CNAME_AUDIO                 "audio"
+#define CNAME_DATAPORT              "dataPort"
+#define CNAME_ROUTE                 "staticRoute"
+#define CNAME_ROUTE0                "staticRoute0"
+#define CNAME_ROUTE1                "staticRoute1"
+#define CNAME_ROUTE2                "staticRoute2"
+#define CNAME_ROUTE3                "staticRoute3"
 #define CNAME_NODEID                "nodeId"
 #define CNAME_NODENAME              "nodeName"
 #define CNAME_MESHID                "meshId"
@@ -282,11 +295,12 @@ int dc_init();
 void send_req();
 int send_info(int, void*);
 void update_time(int, int);
-int update_node(int, char*);
+int update_node_status(int, char*);
 int stat2tree(node_s*, sdata_s*);
 
 int gen_json(const char*, node_s*);
 void first_tree(FILE*, int, node_s*);
+int gen_tree(node_s*, sdata_s*, int);
 node_s *create_node(int, const char*, const char*);
 void insert_node(node_s*, node_s*);
 int del_node(node_s*, const char*);
@@ -300,14 +314,5 @@ void modify_value(char**, const char*);
 int read_ipaddr(const char*, int*);
 int ipisnull(const char*);
 int ipishost(const char*);
-
-
-
-
-
-
-
-
-
 
 #endif

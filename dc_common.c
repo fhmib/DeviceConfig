@@ -156,6 +156,55 @@ void first_tree(FILE *fp, int level, node_s *pnode)
     return ;
 }
 
+int gen_tree(node_s *pn, sdata_s *pd, int cnt)
+{
+    int rval = 0;
+    int i;
+    node_s *node, *pfn;
+
+    for (i = 0; i < cnt; i++)
+    {
+        if (strcmp(pd[i].fname, "null") == 0)
+        {
+            node = create_node(pd[i].type, pd[i].name, pd[i].pvalue);
+            if (node == NULL)
+            {
+                fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, pd[i].name);
+                rval = 1;
+                goto func_exit;
+            }
+            else
+            {
+                insert_node(pn, node);
+            }
+        }
+        else
+        {
+            pfn = search_node(pn, pd[i].fname);
+            if (pfn == NULL)
+            {
+                fprintf(stderr, "%s's fname is set wrong, fname is '%s'\n", pd[i].name, pd[i].fname);
+                rval = 2;
+                goto func_exit;
+            }
+            node = create_node(pd[i].type, pd[i].name, pd[i].pvalue);
+            if (node == NULL)
+            {
+                fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, pd[i].name);
+                rval = 3;
+                goto func_exit;
+            }
+            else
+            {
+                insert_node(pfn, node);
+            }
+        }
+    }
+
+func_exit:
+    return rval;
+}
+
 node_s *create_node(int type, const char *pname, const char *pvalue)
 {
     node_s *node = (node_s*)malloc(sizeof(node_s));
