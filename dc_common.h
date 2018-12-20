@@ -31,7 +31,7 @@
 #define U32                         unsigned int
 #define U64                         unsigned long long
 
-#define ON_BOARD                    0
+#define ON_BOARD                    1
 #define PRINT_COMMAND               1
 #define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
 
@@ -46,6 +46,8 @@
 #define UART0_PATH                  "/dev/ttyPS1"
 #define NET_PATH                    "/proc/net/dev"
 #define KEY_PATH                    "/etc/profile"
+#define VOLTAGE_PATH                "/sys/bus/iio/devices/iio:device0/in_voltage8_raw"
+#define TEMP_PATH                   "/sys/bus/iio/devices/iio:device0/in_temp0_raw"
 #if ON_BOARD
 #define NET_DEV_NAME                "eth0"
 #else
@@ -54,6 +56,7 @@
 #define AUDIO_NAME                  "audio_test"
 
 #define GROUP_IP                    "224.0.1.129"
+
 //micro NODE_IP is absoleted
 //#define NODE_IP                     "192.168.0.5"
 
@@ -81,11 +84,21 @@
 
 #define CNAME_NULL                  "null"
 #define CNAME_NOTDEF                "notDefine"
-#define CNAME_NODE                  "node"
+#define CNAME_NODE                  "node "
+#define CNAME_STATUS                "status"
 #define CNAME_DVLP                  "developer"
+#define CNAME_INFO                  "information"
+#define CNAME_SIGTABLE              "sigQualityTable"
 #define CNAME_NODEHEADER            "nodeHeader"
 #define CNAME_IPSTATUS              "ipStatus"
+#define CNAME_IPTXBYTE              "ipTxByteCnt"
+#define CNAME_IPTXPKT               "ipTxPktCnt"
+#define CNAME_IPTXERR               "ipTxErrorCnt"
+#define CNAME_IPRXBYTE              "ipRxByteCnt"
+#define CNAME_IPRXPKT               "ipRxPktCnt"
+#define CNAME_IPRXERR               "ipRxErrorCnt"
 #define CNAME_FLAGS                 "flags"
+#define CNAME_OL                    "online"
 #define CNAME_CONFIG                "config"
 #define CNAME_RESET                 "reset"
 #define CNAME_MAIN                  "main"
@@ -98,10 +111,14 @@
 #define CNAME_ROUTE3                "staticRoute3"
 #define CNAME_NODEID                "nodeId"
 #define CNAME_NODENAME              "nodeName"
+#define CNAME_VOLTAGE               "supplyPower"
+#define CNAME_TEMP                  "fpgaTemperature"
 #define CNAME_MESHID                "meshId"
+#define CNAME_FREQ                  "centreFreq"
 #define CNAME_CHANBW                "chanBandwidth"
 #define CNAME_TFCI                  "tfci"
 #define CNAME_TXPOWER               "TXPower"
+#define CNAME_MIMO                  "reduceMimo"
 #define CNAME_IPADDRESS             "ipAddress"
 #define CNAME_IPMASK                "ipMask"
 #define CNAME_IPGATEWAY             "ipGateway"
@@ -124,6 +141,9 @@
 #define CNAME_ROUTE2GATE            "staticRoute2GateWay"
 #define CNAME_ROUTE3GATE            "staticRoute3GateWay"
 
+#define CNAME_SOFTVER               "softwareVersion"
+#define CNAME_PROVER                "protocolVersion"
+#define CNAME_FPGAVER               "fpgaVersion"
 #define CNAME_BOARDTYPE             "boardType"
 #define CNAME_SERIAL                "serialNumber"
 #define CNAME_MACADDR               "macAddress"
@@ -191,6 +211,7 @@ typedef struct _node_s{
 
     char name[64];          //name of parameter
     char *pvalue;           //pointer to the value of parameter
+    char isstr;             //whether it is a string
 
     node_l child_h;        //head of child
     node_l child_t;        //tail of child
@@ -221,6 +242,7 @@ typedef struct _sdata_s{
     //int length;                     //length of value
     int (*pfunc)(int, char, char*);    //pointer to function reads/writes value of the parameter
     char fname[64];                 //father's name of tree
+    char isstr;
 }sdata_s;
 
 #if 0
@@ -307,7 +329,7 @@ int stat2tree(node_s*, sdata_s*);
 int gen_json(const char*, node_s*);
 void first_tree(FILE*, int, node_s*);
 int gen_tree(node_s*, sdata_s*, int);
-node_s *create_node(int, const char*, const char*);
+node_s *create_node(int, const char*, const char*, char);
 void insert_node(node_s*, node_s*);
 int del_node(node_s*, const char*);
 void _del_node(node_s*);

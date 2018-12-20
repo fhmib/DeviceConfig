@@ -35,51 +35,53 @@ odata_s rdonly_data[] = {
 int rdonly_cnt = sizeof(rdonly_data)/sizeof(rdonly_data[0]);
 #endif
 
+//for managing status that obtained from other nodes.
 int timeout[MAX_NODE_CNT] = {0};
 
 //local status table
 sdata_s status_data[] = {
-    {JSON_NORMAL, CNAME_NOTDEF, NULL, NULL, CNAME_NULL},
-    {JSON_NORMAL, CNAME_NODEHEADER, NULL, NULL, CNAME_NOTDEF},
-    {JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_NODEHEADER},
-    {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_NODEHEADER},
-    {JSON_STRING, CNAME_SERIAL, NULL, &io_readfrominfo, CNAME_NODEHEADER},
-    {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, CNAME_NODEHEADER},
-    {JSON_NORMAL, CNAME_IPSTATUS, NULL, NULL, CNAME_NOTDEF},
-    {JSON_STRING, "ipTxByteCnt", NULL, &io_ipTxByteCnt, CNAME_IPSTATUS},
-    {JSON_STRING, "ipTxPktCnt", NULL, &io_ipTxPktCnt, CNAME_IPSTATUS},
-    {JSON_STRING, "ipTxErrorCnt", NULL, &io_ipTxErrorCnt, CNAME_IPSTATUS},
-    {JSON_STRING, "ipRxByteCnt", NULL, &io_ipRxByteCnt, CNAME_IPSTATUS},
-    {JSON_STRING, "ipRxPktCnt", NULL, &io_ipRxPktCnt, CNAME_IPSTATUS},
-    {JSON_STRING, "ipRxErrorCnt", NULL, &io_ipRxErrorCnt, CNAME_IPSTATUS},
+    {JSON_NORMAL, CNAME_NOTDEF, NULL, NULL, CNAME_NULL, 1},
+    {JSON_NORMAL, CNAME_NODEHEADER, NULL, NULL, CNAME_NOTDEF, 1},
+    {JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_NODEHEADER, 1},
+    {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_NODEHEADER, 1},
+    {JSON_STRING, CNAME_SERIAL, NULL, &io_readfrominfo, CNAME_NODEHEADER, 1},
+    {JSON_STRING, CNAME_VOLTAGE, NULL, &io_voltage, CNAME_NODEHEADER, 1},
+    {JSON_STRING, CNAME_TEMP, NULL, &io_temperature, CNAME_NODEHEADER, 1},
+    {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, CNAME_NODEHEADER, 1},
+    {JSON_NORMAL, CNAME_IPSTATUS, NULL, NULL, CNAME_NOTDEF, 1},
+    {JSON_STRING, CNAME_IPTXBYTE, NULL, &io_ipTxByteCnt, CNAME_IPSTATUS, 1},
+    {JSON_STRING, CNAME_IPTXPKT, NULL, &io_ipTxPktCnt, CNAME_IPSTATUS, 1},
+    {JSON_STRING, CNAME_IPTXERR, NULL, &io_ipTxErrorCnt, CNAME_IPSTATUS, 1},
+    {JSON_STRING, CNAME_IPRXBYTE, NULL, &io_ipRxByteCnt, CNAME_IPSTATUS, 1},
+    {JSON_STRING, CNAME_IPRXPKT, NULL, &io_ipRxPktCnt, CNAME_IPSTATUS, 1},
+    {JSON_STRING, CNAME_IPRXERR, NULL, &io_ipRxErrorCnt, CNAME_IPSTATUS, 1},
 };
 int status_cnt = sizeof(status_data)/sizeof(status_data[0]);
 
 //information table
 sdata_s info_t[] = {
-    {JSON_STRING, "softwareVersion", NULL, NULL, CNAME_NULL},
-    {JSON_STRING, "protocolVersion", NULL, NULL, CNAME_NULL},
-    {JSON_STRING, "fpgaVersion", NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_SERIAL, NULL, &io_readInfo, CNAME_NULL},
-    {JSON_STRING, CNAME_BOARDTYPE, NULL, &io_readInfo, CNAME_NULL},
-    {JSON_STRING, CNAME_MACADDR, NULL, &io_macAddr, CNAME_NULL},
-    {JSON_STRING, "phyAddress", NULL, NULL, CNAME_NULL}
+    {JSON_STRING, CNAME_SOFTVER, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_PROVER, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_FPGAVER, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_SERIAL, NULL, &io_readInfo, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_BOARDTYPE, NULL, &io_readInfo, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_MACADDR, NULL, &io_macAddr, CNAME_NULL, 1},
 };
 int info_cnt = sizeof(info_t)/sizeof(info_t[0]);
 
 //developer table
 sdata_s dvlp_t[] = {
-    {JSON_STRING, CNAME_TBS, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_UPS, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_CLOCK, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_NETSTATUS, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_SLOTCNT, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_L2BNUM, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_B2LNUM, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_BBSFNUM, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_VMODE, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_BSTABLE, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_DSTABLE, NULL, NULL, CNAME_NULL},
+    {JSON_STRING, CNAME_TBS, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_UPS, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_CLOCK, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_NETSTATUS, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_SLOTCNT, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_L2BNUM, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_B2LNUM, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_BBSFNUM, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_VMODE, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_BSTABLE, NULL, NULL, CNAME_NULL, 0},
+    {JSON_STRING, CNAME_DSTABLE, NULL, NULL, CNAME_NULL, 0},
 };
 int dvlp_cnt = sizeof(dvlp_t)/sizeof(dvlp_t[0]);
 
@@ -97,49 +99,49 @@ node_s *config_root;
 
 //config table
 sdata_s config_t[] = {
-    {JSON_NORMAL, CNAME_FLAGS, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_CONFIG, NULL, NULL, CNAME_FLAGS},
-    {JSON_STRING, CNAME_RESET, NULL, NULL, CNAME_FLAGS},
-    {JSON_NORMAL, CNAME_MAIN, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_MAIN},
-    {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_MAIN},
-    {JSON_STRING, CNAME_MESHID, NULL, NULL, CNAME_MAIN},
-    {JSON_STRING, "centreFreq", NULL, NULL, CNAME_MAIN},
-    {JSON_STRING, CNAME_CHANBW, NULL, &io_chanBW, CNAME_MAIN},
-    {JSON_STRING, CNAME_TFCI, NULL, &io_tfci, CNAME_MAIN},
-    {JSON_STRING, CNAME_TXPOWER, NULL, &io_txPower, CNAME_MAIN},
-    {JSON_STRING, "reduceMimo", NULL, NULL, CNAME_MAIN},
-    {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, CNAME_MAIN},
-    {JSON_STRING, CNAME_IPMASK, NULL, &io_ipMask, CNAME_MAIN},
-    {JSON_STRING, CNAME_IPGATEWAY, NULL, &io_ipGateway, CNAME_MAIN},
-    {JSON_NORMAL, CNAME_AUDIO, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_AUDIOENABLE, NULL, &io_audioEnable, CNAME_AUDIO},
-    {JSON_STRING, CNAME_AUDIOPLAY, NULL, &io_audioVol, CNAME_AUDIO},
-    {JSON_STRING, CNAME_AUDIOMIC, NULL, &io_audioVol, CNAME_AUDIO},
-    {JSON_STRING, CNAME_AUDIOALC, NULL, &io_audioVol, CNAME_AUDIO},
-    {JSON_NORMAL, CNAME_DATAPORT, NULL, NULL, CNAME_NULL},
-    {JSON_STRING, CNAME_UART0RATE, NULL, &io_dataRate, CNAME_DATAPORT},
-    {JSON_STRING, CNAME_UART0PARITY, NULL, &io_dataParity, CNAME_DATAPORT},
-    //{JSON_STRING, "data0StopBits", NULL, NULL, CNAME_DATAPORT},
-    //{JSON_STRING, "data0FlowControl", NULL, NULL, CNAME_DATAPORT},
-    //{JSON_STRING, "data0Width", NULL, NULL, CNAME_DATAPORT},
-    {JSON_NORMAL, CNAME_ROUTE, NULL, NULL, CNAME_NULL},
-    {JSON_NORMAL, CNAME_ROUTE0, NULL, NULL, CNAME_ROUTE},
-    {JSON_STRING, CNAME_ROUTE0ADDR, NULL, &io_route, CNAME_ROUTE0},
-    {JSON_STRING, CNAME_ROUTE0MASK, NULL, &io_route, CNAME_ROUTE0},
-    {JSON_STRING, CNAME_ROUTE0GATE, NULL, &io_route, CNAME_ROUTE0},
-    {JSON_NORMAL, CNAME_ROUTE1, NULL, NULL, CNAME_ROUTE},
-    {JSON_STRING, CNAME_ROUTE1ADDR, NULL, &io_route, CNAME_ROUTE1},
-    {JSON_STRING, CNAME_ROUTE1MASK, NULL, &io_route, CNAME_ROUTE1},
-    {JSON_STRING, CNAME_ROUTE1GATE, NULL, &io_route, CNAME_ROUTE1},
-    {JSON_NORMAL, CNAME_ROUTE2, NULL, NULL, CNAME_ROUTE},
-    {JSON_STRING, CNAME_ROUTE2ADDR, NULL, &io_route, CNAME_ROUTE2},
-    {JSON_STRING, CNAME_ROUTE2MASK, NULL, &io_route, CNAME_ROUTE2},
-    {JSON_STRING, CNAME_ROUTE2GATE, NULL, &io_route, CNAME_ROUTE2},
-    {JSON_NORMAL, CNAME_ROUTE3, NULL, NULL, CNAME_ROUTE},
-    {JSON_STRING, CNAME_ROUTE3ADDR, NULL, &io_route, CNAME_ROUTE3},
-    {JSON_STRING, CNAME_ROUTE3MASK, NULL, &io_route, CNAME_ROUTE3},
-    {JSON_STRING, CNAME_ROUTE3GATE, NULL, &io_route, CNAME_ROUTE3},
+    {JSON_NORMAL, CNAME_FLAGS, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_CONFIG, NULL, NULL, CNAME_FLAGS, 1},
+    {JSON_STRING, CNAME_RESET, NULL, NULL, CNAME_FLAGS, 1},
+    {JSON_NORMAL, CNAME_MAIN, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_MESHID, NULL, NULL, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_FREQ, NULL, NULL, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_CHANBW, NULL, &io_chanBW, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_TFCI, NULL, &io_tfci, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_TXPOWER, NULL, &io_txPower, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_MIMO, NULL, NULL, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_IPMASK, NULL, &io_ipMask, CNAME_MAIN, 1},
+    {JSON_STRING, CNAME_IPGATEWAY, NULL, &io_ipGateway, CNAME_MAIN, 1},
+    {JSON_NORMAL, CNAME_AUDIO, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_AUDIOENABLE, NULL, &io_audioEnable, CNAME_AUDIO, 1},
+    {JSON_STRING, CNAME_AUDIOPLAY, NULL, &io_audioVol, CNAME_AUDIO, 1},
+    {JSON_STRING, CNAME_AUDIOMIC, NULL, &io_audioVol, CNAME_AUDIO, 1},
+    {JSON_STRING, CNAME_AUDIOALC, NULL, &io_audioVol, CNAME_AUDIO, 1},
+    {JSON_NORMAL, CNAME_DATAPORT, NULL, NULL, CNAME_NULL, 1},
+    {JSON_STRING, CNAME_UART0RATE, NULL, &io_dataRate, CNAME_DATAPORT, 1},
+    {JSON_STRING, CNAME_UART0PARITY, NULL, &io_dataParity, CNAME_DATAPORT, 1},
+    //{JSON_STRING, "data0StopBits", NULL, NULL, CNAME_DATAPORT, 1},
+    //{JSON_STRING, "data0FlowControl", NULL, NULL, CNAME_DATAPORT, 1},
+    //{JSON_STRING, "data0Width", NULL, NULL, CNAME_DATAPORT, 1},
+    {JSON_NORMAL, CNAME_ROUTE, NULL, NULL, CNAME_NULL, 1},
+    {JSON_NORMAL, CNAME_ROUTE0, NULL, NULL, CNAME_ROUTE, 1},
+    {JSON_STRING, CNAME_ROUTE0ADDR, NULL, &io_route, CNAME_ROUTE0, 1},
+    {JSON_STRING, CNAME_ROUTE0MASK, NULL, &io_route, CNAME_ROUTE0, 1},
+    {JSON_STRING, CNAME_ROUTE0GATE, NULL, &io_route, CNAME_ROUTE0, 1},
+    {JSON_NORMAL, CNAME_ROUTE1, NULL, NULL, CNAME_ROUTE, 1},
+    {JSON_STRING, CNAME_ROUTE1ADDR, NULL, &io_route, CNAME_ROUTE1, 1},
+    {JSON_STRING, CNAME_ROUTE1MASK, NULL, &io_route, CNAME_ROUTE1, 1},
+    {JSON_STRING, CNAME_ROUTE1GATE, NULL, &io_route, CNAME_ROUTE1, 1},
+    {JSON_NORMAL, CNAME_ROUTE2, NULL, NULL, CNAME_ROUTE, 1},
+    {JSON_STRING, CNAME_ROUTE2ADDR, NULL, &io_route, CNAME_ROUTE2, 1},
+    {JSON_STRING, CNAME_ROUTE2MASK, NULL, &io_route, CNAME_ROUTE2, 1},
+    {JSON_STRING, CNAME_ROUTE2GATE, NULL, &io_route, CNAME_ROUTE2, 1},
+    {JSON_NORMAL, CNAME_ROUTE3, NULL, NULL, CNAME_ROUTE, 1},
+    {JSON_STRING, CNAME_ROUTE3ADDR, NULL, &io_route, CNAME_ROUTE3, 1},
+    {JSON_STRING, CNAME_ROUTE3MASK, NULL, &io_route, CNAME_ROUTE3, 1},
+    {JSON_STRING, CNAME_ROUTE3GATE, NULL, &io_route, CNAME_ROUTE3, 1},
 };
 int config_cnt = sizeof(config_t)/sizeof(config_t[0]);
 
@@ -190,7 +192,7 @@ int main(int argc, char *argv[])
 #endif
 
     init_device();
-    usleep(500000);
+    usleep(100000);
     update_local_status();
 
     gen_json(STATUS_PATH, status_root);
@@ -240,7 +242,7 @@ int init_tree()
 #endif
 
     //initialize config
-    config_root = create_node(JSON_BRACKET, NULL, NULL);
+    config_root = create_node(JSON_BRACKET, NULL, NULL, 1);
     // cflags = create_node(JSON_NORMAL, "flags", NULL);
     // csettings = create_node(JSON_NORMAL, "settings", NULL);
     // cmain = create_node(JSON_NORMAL, CNAME_MAIN, NULL);
@@ -303,12 +305,12 @@ int init_tree()
 
     // node_s *remote = create_node(JSON_ARRAY, "remoteStatus", NULL);
 
-    status_root = create_node(JSON_BRACKET, NULL, NULL);
-    sflags = create_node(JSON_NORMAL, "flags", NULL);
-    sstatus = create_node(JSON_NORMAL, "status", NULL);
-    ssigtable = create_node(JSON_ARRAY, "sigQualityTable", NULL);
-    sinformation = create_node(JSON_NORMAL, "information", NULL);
-    sdeveloper = create_node(JSON_NORMAL, CNAME_DVLP, NULL);
+    status_root = create_node(JSON_BRACKET, NULL, NULL, 1);
+    sflags = create_node(JSON_NORMAL, CNAME_FLAGS, NULL, 1);
+    sstatus = create_node(JSON_NORMAL, CNAME_STATUS, NULL, 1);
+    ssigtable = create_node(JSON_ARRAY, CNAME_SIGTABLE, NULL, 1);
+    sinformation = create_node(JSON_NORMAL, CNAME_INFO, NULL, 1);
+    sdeveloper = create_node(JSON_NORMAL, CNAME_DVLP, NULL, 1);
 
     insert_node(status_root, sflags);
     insert_node(status_root, sstatus);
@@ -317,7 +319,7 @@ int init_tree()
     insert_node(status_root, sdeveloper);
 
     //initialize flags
-    insert_node(sflags, create_node(JSON_STRING, "online", "0"));
+    insert_node(sflags, create_node(JSON_STRING, CNAME_OL, "0", 1));
 
     //initialize remote status
     timeout[sa-1] = MAX_TIMEOUT;
@@ -339,7 +341,7 @@ int init_tree()
 
     //initialize signal quality table
     for(i = 0; i < MAX_NODE_CNT; i++){
-        sigs[i] = create_node(JSON_CUSTOM1, NULL, NULL);
+        sigs[i] = create_node(JSON_CUSTOM1, NULL, NULL, 0);
         insert_node(ssigtable, sigs[i]);
     }
     update_sig();
@@ -771,6 +773,8 @@ void do_task()
     int i;
     U32 emap;
 
+    pthread_mutex_lock(&gts.mutex);
+
     emap = gts.tmap & gts.tmask;
     for(i = 0; i < 32; i++){
         if(!((1<<i)&(emap))){
@@ -788,6 +792,8 @@ void do_task()
             (*gts.procs[i].pf)(gts.procs[i].para);
         }
     }
+
+    pthread_mutex_unlock(&gts.mutex);
 
     return ;
 }
@@ -957,7 +963,7 @@ void sub_timeout(U32 arg)
         }
     }
 
-#if 1
+#if 0
     fprintf(stderr, "%s,%d:wflag=%d\n", __func__, __LINE__, wflag);
     for(i = 0; i < MAX_NODE_CNT; i++){
         fprintf(stderr, "%d:%d%s", i, timeout[i], (i==(MAX_NODE_CNT-1)?"\n":","));
@@ -1204,7 +1210,7 @@ void add_local_status(){
     nodeid = (int)sa&0x000000FF;
 
     //create sub status tree
-    node = create_node(status_data[0].type, status_data[0].name, status_data[0].pvalue);
+    node = create_node(status_data[0].type, status_data[0].name, status_data[0].pvalue, status_data[0].isstr);
     for(i = 1; i < status_cnt; i++){
         // fprintf(stderr, "%s,%d:%s\n", __func__, __LINE__, status_data[i].name);
         stat2tree(node, &status_data[i]);
@@ -1241,7 +1247,7 @@ void insert_status_2tree(int nodeid, node_s *node)
 
     pl = &sstatus->child_h;
     while(pl->next != NULL){
-        fprintf(stderr, "%s,%d:node:%d, from:%d\n", __func__, __LINE__, nodeid, getnumfromstr(pl->next->pnode->name));
+        // fprintf(stderr, "%s,%d:node:%d, from:%d\n", __func__, __LINE__, nodeid, getnumfromstr(pl->next->pnode->name));
         if(nodeid < getnumfromstr(pl->next->pnode->name)){
             break;
         }else{
@@ -1610,7 +1616,7 @@ int update_node_status(int nodeid, char *pmsg)
     if(str1 != NULL){
         for(i = 0; i < status_cnt; i++){
             if(strncmp(str1, status_data[i].name, strlen(CNAME_NODE)) == 0){
-                fprintf(stderr, "%s,%d:name:str1:%s, sta_data:%s\n", __func__, __LINE__, str1, status_data[i].name);
+                // fprintf(stderr, "%s,%d:name:str1:%s, sta_data:%s\n", __func__, __LINE__, str1, status_data[i].name);
                 sd = status_data[i];
                 strcpy(name, str1);
                 strcpy(sd.name, name);
@@ -1625,7 +1631,7 @@ int update_node_status(int nodeid, char *pmsg)
                 }
                 if(node == NULL){
                     //create a sub-status-tree about receiving node information
-                    node = create_node(sd.type, sd.name, sd.pvalue);
+                    node = create_node(sd.type, sd.name, sd.pvalue, sd.isstr);
                 }else{
                     rval = 2;
                     goto func_exit;
@@ -1643,7 +1649,7 @@ int update_node_status(int nodeid, char *pmsg)
             if(strcmp(str1, status_data[i].name) == 0){
                 sd = status_data[i];
                 if(strncmp(sd.fname, CNAME_NODE, strlen(CNAME_NODE)) == 0){
-                    fprintf(stderr, "%s,%d:fname:sd:%s, sta_data:%s\n", __func__, __LINE__, sd.fname, name);
+                    // fprintf(stderr, "%s,%d:fname:sd:%s, sta_data:%s\n", __func__, __LINE__, sd.fname, name);
                     strcpy(sd.fname, name);
                 }
                 if(sd.type == JSON_NORMAL || sd.type == JSON_ARRAY){
@@ -1687,7 +1693,7 @@ int stat2tree(node_s *pn, sdata_s *sdata)
     node_s *node, *pfn;
 
     if(strcmp(sdata->fname, "null") == 0){
-        node = create_node(sdata->type, sdata->name, sdata->pvalue);
+        node = create_node(sdata->type, sdata->name, sdata->pvalue, sdata->isstr);
         if(node == NULL){
             fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, sdata->name);
             rval = 1;
@@ -1702,7 +1708,7 @@ int stat2tree(node_s *pn, sdata_s *sdata)
             rval = 2;
             goto func_exit;
         }
-        node = create_node(sdata->type, sdata->name, sdata->pvalue);
+        node = create_node(sdata->type, sdata->name, sdata->pvalue, sdata->isstr);
         if(node == NULL){
             fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, sdata->name);
             rval = 3;

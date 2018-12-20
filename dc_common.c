@@ -2,6 +2,10 @@
 
 extern node_s *sdeveloper;
 
+/*
+ * func:
+ *      generate json-file according to the tree
+ */
 int gen_json(const char *path, node_s *root)
 {
     int rval = 0;
@@ -129,10 +133,25 @@ void first_tree(FILE *fp, int level, node_s *pnode)
             strcat(buf, "\"");
             strcat(buf, pnode->name);
             strcat(buf, "\": ");
-            strcat(buf, "\"");
-            if(pnode->pvalue != NULL)
+
+            if(pnode->isstr == 1){
+                strcat(buf, "\"");
+            }else{
+                strcat(buf, "");
+            }
+
+            if(pnode->pvalue != NULL){
                 strcat(buf, pnode->pvalue);
-            strcat(buf, "\"");
+            }else{
+                if(pnode->isstr != 1)
+                    strcat(buf, "\"\"");
+            }
+
+            if(pnode->isstr == 1){
+                strcat(buf, "\"");
+            }else{
+                strcat(buf, "");
+            }
             fwrite(buf, strlen(buf), 1, fp);
 
             //printf("level = %d, type = %d\n", level, pnode->type);
@@ -156,6 +175,10 @@ void first_tree(FILE *fp, int level, node_s *pnode)
     return ;
 }
 
+/*
+ * func:
+ *      generate tree according to array of node_s type.
+ */
 int gen_tree(node_s *pn, sdata_s *pd, int cnt)
 {
     int rval = 0;
@@ -166,7 +189,7 @@ int gen_tree(node_s *pn, sdata_s *pd, int cnt)
     {
         if (strcmp(pd[i].fname, "null") == 0)
         {
-            node = create_node(pd[i].type, pd[i].name, pd[i].pvalue);
+            node = create_node(pd[i].type, pd[i].name, pd[i].pvalue, pd[i].isstr);
             if (node == NULL)
             {
                 fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, pd[i].name);
@@ -187,7 +210,7 @@ int gen_tree(node_s *pn, sdata_s *pd, int cnt)
                 rval = 2;
                 goto func_exit;
             }
-            node = create_node(pd[i].type, pd[i].name, pd[i].pvalue);
+            node = create_node(pd[i].type, pd[i].name, pd[i].pvalue, pd[i].isstr);
             if (node == NULL)
             {
                 fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, pd[i].name);
@@ -205,7 +228,11 @@ func_exit:
     return rval;
 }
 
-node_s *create_node(int type, const char *pname, const char *pvalue)
+/*
+ * func:
+ *      create a node.
+ */
+node_s *create_node(int type, const char *pname, const char *pvalue, char isstr)
 {
     node_s *node = (node_s*)malloc(sizeof(node_s));
 
@@ -213,6 +240,7 @@ node_s *create_node(int type, const char *pname, const char *pvalue)
     memset(node, 0, sizeof(node_s));
 
     node->type = (char)type;
+    node->isstr = isstr;
     node->child_h.next = node->child_t.next = NULL;
 
     switch(node->type){
@@ -267,6 +295,10 @@ node_s *create_node(int type, const char *pname, const char *pvalue)
     return NULL;
 }
 
+/*
+ * func:
+ *      insert a node to the tree, the node 'src' is child of 'dst'.
+ */
 void insert_node(node_s *dst, node_s *src)
 {
     node_l *p = &dst->child_t;
@@ -337,7 +369,7 @@ int del_node(node_s *node, const char *name)
     p = &node->child_h;
     while(p->next != NULL){
         if((0 == strcmp(p->next->pnode->name, name))){
-            fprintf(stderr, "%s,%d:deleting node name:%s\n", __func__, __LINE__, name);
+            // fprintf(stderr, "%s,%d:deleting node name:%s\n", __func__, __LINE__, name);
             temp = p->next;
             p->next = temp->next;
 
@@ -608,6 +640,10 @@ int ipishost(const char *buf)
     return 0;
 }
 
+/*
+ * func:
+ *      get the number from a string, for example, '32' from the string 'node_32' or 12 from the string 'dataPort12Speed'.
+ */
 int getnumfromstr(char *arg)
 {
     int value;

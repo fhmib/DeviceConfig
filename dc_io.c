@@ -26,6 +26,7 @@ char buf_audio[] = "/home/rzxt_mesh/aaf0216/";
 extern char port_flag[];
 extern char route_flag[];
 
+//for configure uart
 int name_arr[] = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300};
 
 //store the return address of function mmap()
@@ -52,6 +53,10 @@ int io_undo(int index, char mode, char *pvalue)
     return 0;
 }
 
+/*
+ * func:
+ *      read information from 'devinfo' and store the value to 'info_t[]'.
+ */
 int io_readInfo(int index, char mode, char *pvalue)
 {
     rdata_s *pd = NULL;
@@ -70,6 +75,10 @@ func_exit:
     return 0;
 }
 
+/*
+ * func:
+ *      read information from 'info_t[]' and store the value to 'status_data[]'.
+ */
 int io_readfrominfo(int index, char mode, char *pvalue)
 {
     int rval = 0;
@@ -189,6 +198,52 @@ int io_ipRxErrorCnt(int index, char mode, char *pvalue)
     sprintf(buf, "%lld", rxerrors);
     modify_value(&status_data[index].pvalue, buf);
 
+    return rval;
+}
+
+int io_voltage(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    int ivol;
+    double dvol;
+    char buf[8];
+
+#if ON_BOARD
+    rval = readvaluefromfile(VOLTAGE_PATH, &ivol);
+    if(rval){
+        fprintf(stderr, "%s,%d:read file failed\n", __func__, __LINE__);
+        rval = 1;
+        goto func_exit;
+    }
+    dvol = (double)ivol/4.096*23.1/1000;
+    sprintf(buf, "%.2lf", dvol);
+    modify_value(&status_data[index].pvalue, buf);
+#endif
+
+func_exit:
+    return rval;
+}
+
+int io_temperature(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    int itemp;
+    double dtemp;
+    char buf[8];
+
+#if ON_BOARD
+    rval = readvaluefromfile(TEMP_PATH, &itemp);
+    if(rval){
+        fprintf(stderr, "%s,%d:read file failed\n", __func__, __LINE__);
+        rval = 1;
+        goto func_exit;
+    }
+    dtemp = ((double)itemp*503.975)/4096 - 273.15;
+    sprintf(buf, "%.2lf", dtemp);
+    modify_value(&status_data[index].pvalue, buf);
+#endif
+
+func_exit:
     return rval;
 }
 
@@ -619,7 +674,7 @@ func_exit:
 
 /*
  * func:
- *      according to a keyword, modify the line after its line, use for config.ini
+ *      according to a keyword, modify the line after its line, use for 'config.ini'.
  */
 int modify_ini(const char *file_path, const char *p_kw, const char *p_str)
 {
@@ -1430,3 +1485,27 @@ func_exit:
     return ;
 }
 
+int readvaluefromfile(const char *path, int *value)
+{
+    int rval = 0;
+    FILE *fp = NULL;
+    char buf[128];
+
+    fp = fopen(path, "r");
+    if (fp == NULL){
+        rval = 1;
+        perror("fopen");
+        goto func_exit;
+    }
+    if(NULL == fgets(buf, 128, fp)){
+        rval = 2;
+        goto func_exit;
+    }
+    sscanf(buf, "%d", value);
+
+func_exit:
+    if (fp != NULL){
+        fclose(fp);
+    }
+    return rval;
+}

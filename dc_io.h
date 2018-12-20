@@ -24,6 +24,8 @@ int io_ipRxByteCnt(int, char, char*);
 int io_ipRxPktCnt(int, char, char*);
 int io_ipRxErrorCnt(int, char, char*);
 
+int io_voltage(int, char, char*);
+int io_temperature(int, char, char*);
 int io_ipAddress(int, char, char*);
 int io_ipMask(int, char, char*);
 int io_ipGateway(int, char, char*);
@@ -53,5 +55,6 @@ int drvFPGA_Init(int*);
 int drvFPGA_Close(int*);
 void del_route(int);
 void config_route(int);
+int readvaluefromfile(const char*, int*);
 
 #endif
