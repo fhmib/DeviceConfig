@@ -33,7 +33,7 @@
 
 #define ON_BOARD                    0
 #define PRINT_COMMAND               1
-#define SOCKET_TEST                 1
+#define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
 
 #define STATUS_PATH                 "status.json"
 #define CONFIG_PATH                 "config.json"
@@ -67,7 +67,7 @@
 #define MN_REP_MAC                  21002
 #define MN_REP_ROUTE                21003
 
-#define MAX_SOCK_LEN                1024
+#define MAX_SOCK_LEN                8192
 #define MAX_MSG_LEN                 8192
 #define MUL_PORT                    9001
 #define INFO_PORT                   9001
@@ -80,7 +80,11 @@
 #define MMAX(a,b)                   ((a > b) ? a : b)
 
 #define CNAME_NULL                  "null"
+#define CNAME_NOTDEF                "notDefine"
+#define CNAME_NODE                  "node"
 #define CNAME_DVLP                  "developer"
+#define CNAME_NODEHEADER            "nodeHeader"
+#define CNAME_IPSTATUS              "ipStatus"
 #define CNAME_FLAGS                 "flags"
 #define CNAME_CONFIG                "config"
 #define CNAME_RESET                 "reset"
@@ -287,9 +291,11 @@ void ip_status(U32);
 int cmp_config(rdata_s*);
 int add_config();
 //void reset_config(rdata_s*);
-void update_status();
+void update_local_status();
+void add_local_status();
+void insert_status_2tree(int, node_s*);
 void remove_status(int);
-void _remove_status(node_s*);
+//void _remove_status(node_s*);
 void *rcv_thread(void*);
 int dc_init();
 void send_req();
@@ -314,5 +320,6 @@ void modify_value(char**, const char*);
 int read_ipaddr(const char*, int*);
 int ipisnull(const char*);
 int ipishost(const char*);
+int getnumfromstr(char*);
 
 #endif

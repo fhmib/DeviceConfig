@@ -14,6 +14,7 @@
 int io_undo(int, char, char*);
 
 int io_readInfo(int, char, char*);
+int io_readfrominfo(int, char, char*);
 int io_macAddr(int, char, char*);
 
 int io_ipTxByteCnt(int, char, char*);
@@ -38,7 +39,6 @@ int io_route(int, char, char*);
 int io_audioEnable(int, char, char*);
 int io_audioVol(int, char, char*);
 
-int getnumfromstr(char*);
 int modify_ini(const char*, const char*, const char*);
 int modify_file(const char*, const char*, const char*, const char*, const char*);
 int file_size(const char*);

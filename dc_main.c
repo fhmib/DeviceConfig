@@ -35,20 +35,23 @@ odata_s rdonly_data[] = {
 int rdonly_cnt = sizeof(rdonly_data)/sizeof(rdonly_data[0]);
 #endif
 
+int timeout[MAX_NODE_CNT] = {0};
+
 //local status table
 sdata_s status_data[] = {
-    {JSON_NORMAL, "nodeHeader", NULL, NULL, "null"},
-    {JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, "nodeHeader"},
-    {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, "nodeHeader"},
-    {JSON_STRING, CNAME_SERIAL, NULL, &io_undo, "nodeHeader"},
-    {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, "nodeHeader"},
-    {JSON_NORMAL, "ipStatus", NULL, NULL, "null"},
-    {JSON_STRING, "ipTxByteCnt", NULL, &io_ipTxByteCnt, "ipStatus"},
-    {JSON_STRING, "ipTxPktCnt", NULL, &io_ipTxPktCnt, "ipStatus"},
-    {JSON_STRING, "ipTxErrorCnt", NULL, &io_ipTxErrorCnt, "ipStatus"},
-    {JSON_STRING, "ipRxByteCnt", NULL, &io_ipRxByteCnt, "ipStatus"},
-    {JSON_STRING, "ipRxPktCnt", NULL, &io_ipRxPktCnt, "ipStatus"},
-    {JSON_STRING, "ipRxErrorCnt", NULL, &io_ipRxErrorCnt, "ipStatus"},
+    {JSON_NORMAL, CNAME_NOTDEF, NULL, NULL, CNAME_NULL},
+    {JSON_NORMAL, CNAME_NODEHEADER, NULL, NULL, CNAME_NOTDEF},
+    {JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_NODEHEADER},
+    {JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_NODEHEADER},
+    {JSON_STRING, CNAME_SERIAL, NULL, &io_readfrominfo, CNAME_NODEHEADER},
+    {JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, CNAME_NODEHEADER},
+    {JSON_NORMAL, CNAME_IPSTATUS, NULL, NULL, CNAME_NOTDEF},
+    {JSON_STRING, "ipTxByteCnt", NULL, &io_ipTxByteCnt, CNAME_IPSTATUS},
+    {JSON_STRING, "ipTxPktCnt", NULL, &io_ipTxPktCnt, CNAME_IPSTATUS},
+    {JSON_STRING, "ipTxErrorCnt", NULL, &io_ipTxErrorCnt, CNAME_IPSTATUS},
+    {JSON_STRING, "ipRxByteCnt", NULL, &io_ipRxByteCnt, CNAME_IPSTATUS},
+    {JSON_STRING, "ipRxPktCnt", NULL, &io_ipRxPktCnt, CNAME_IPSTATUS},
+    {JSON_STRING, "ipRxErrorCnt", NULL, &io_ipRxErrorCnt, CNAME_IPSTATUS},
 };
 int status_cnt = sizeof(status_data)/sizeof(status_data[0]);
 
@@ -188,7 +191,7 @@ int main(int argc, char *argv[])
 
     init_device();
     usleep(500000);
-    update_status();
+    update_local_status();
 
     gen_json(STATUS_PATH, status_root);
     gen_json(CONFIG_PATH, config_root);
@@ -298,7 +301,7 @@ int init_tree()
         fprintf(stderr, "restore init.json success\n");
     }
 
-    node_s *remote = create_node(JSON_ARRAY, "remoteStatus", NULL);
+    // node_s *remote = create_node(JSON_ARRAY, "remoteStatus", NULL);
 
     status_root = create_node(JSON_BRACKET, NULL, NULL);
     sflags = create_node(JSON_NORMAL, "flags", NULL);
@@ -317,14 +320,22 @@ int init_tree()
     insert_node(sflags, create_node(JSON_STRING, "online", "0"));
 
     //initialize remote status
-    insert_node(sstatus, remote);
-    for(i = 0; i < MAX_NODE_CNT; i++){
-        snode_data[i] = create_node(JSON_BRACKET, NULL, NULL);
-        insert_node(remote, snode_data[i]);
-        insert_node(snode_data[i], create_node(JSON_STRING, "timeout", "0"));
+    timeout[sa-1] = MAX_TIMEOUT;
+    for(i = 0; i < status_cnt; i++){
+        if(strcmp(status_data[i].name, CNAME_NOTDEF) == 0){
+            sprintf(status_data[i].name, CNAME_NODE "%u", (U32)sa&0x000000FF);
+        }
+        if(strcmp(status_data[i].fname, CNAME_NOTDEF) == 0){
+            sprintf(status_data[i].fname, CNAME_NODE "%u", (U32)sa&0x000000FF);
+        }
     }
-    mod_node(snode_data[sa-1]->child_h.next->pnode, "15");
-    //update_status();
+    // insert_node(sstatus, remote);
+    // for(i = 0; i < MAX_NODE_CNT; i++){
+    //     snode_data[i] = create_node(JSON_BRACKET, NULL, NULL);
+    //     insert_node(remote, snode_data[i]);
+    //     insert_node(snode_data[i], create_node(JSON_STRING, "timeout", "0"));
+    // }
+    // mod_node(snode_data[sa-1]->child_h.next->pnode, "15");
 
     //initialize signal quality table
     for(i = 0; i < MAX_NODE_CNT; i++){
@@ -789,7 +800,7 @@ void chk_online(U32 arg)
 {
     rdata_s *pd = NULL;
 
-    //printf("I'm in %s, arg = %d\n", __func__, arg);
+    // printf("I'm in %s, arg = %d\n", __func__, arg);
 
     pthread_mutex_lock(&pmutex);
 
@@ -800,8 +811,8 @@ void chk_online(U32 arg)
     }
 
     if(0 == (strcmp("1", pd->pvalue))){
-        //fprintf(stderr, "%s,%d\n", __func__, __LINE__);
-        update_status();
+        // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
+        update_local_status();
 #if ON_BOARD
         update_dvlp();
 #endif
@@ -817,6 +828,7 @@ func_exit:
     if(pd != NULL){
         free_rdata(pd);
     }
+    // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
     return ;
 }
 
@@ -905,31 +917,52 @@ void sub_timeout(U32 arg)
 
     pthread_mutex_lock(&pmutex);
 
-    for(i = 0; i < 32; i++){
-        if(i == sa-1) continue;
-        node = search_node(snode_data[i], "timeout");
-        if(node != NULL){
-            value = atoi(node->pvalue);
-            //printf("--> timeout[%d] = %d, timeout_flag[%d] = %d\n", i, value, i, timeout_flag[i]);
-            if(value > 0 && (i != (sa-1))){
-                if(value == MAX_TIMEOUT){
-                    if(timeout_flag[i] == 0){
-                        timeout_flag[i] = 1;
-                        continue;
-                    }else{
-                        timeout_flag[i] = 0;
-                    }
-                }
-                value -= 1;
-                sprintf(buf, "%d", value);
-                mod_node(node, buf);
-                wflag++;
-                if(value == 0){
-                    remove_status(i);
+    // for(i = 0; i < 32; i++){
+    //     if(i == sa-1) continue;
+    //     node = search_node(snode_data[i], "timeout");
+    //     if(node != NULL){
+    //         value = atoi(node->pvalue);
+    //         //printf("--> timeout[%d] = %d, timeout_flag[%d] = %d\n", i, value, i, timeout_flag[i]);
+    //         if(value > 0 && (i != (sa-1))){
+    //             if(value == MAX_TIMEOUT){
+    //                 if(timeout_flag[i] == 0){
+    //                     timeout_flag[i] = 1;
+    //                     continue;
+    //                 }else{
+    //                     timeout_flag[i] = 0;
+    //                 }
+    //             }
+    //             value -= 1;
+    //             sprintf(buf, "%d", value);
+    //             mod_node(node, buf);
+    //             wflag++;
+    //             if(value == 0){
+    //                 remove_status(i);
+    //             }
+    //         }
+    //     }
+    // }
+
+    for(i = 0; i < MAX_NODE_CNT; i++){
+        if(i == (int)(sa-1)&0x000000FF){
+            continue;
+        }else{
+            if(timeout[i] > 0){
+                (timeout[i])--;
+                if(timeout[i] == 0){
+                    remove_status(i+1);
+                    wflag++;
                 }
             }
         }
     }
+
+#if 1
+    fprintf(stderr, "%s,%d:wflag=%d\n", __func__, __LINE__, wflag);
+    for(i = 0; i < MAX_NODE_CNT; i++){
+        fprintf(stderr, "%d:%d%s", i, timeout[i], (i==(MAX_NODE_CNT-1)?"\n":","));
+    }
+#endif
 
     if(wflag){
         gen_json(STATUS_PATH, status_root);
@@ -1138,7 +1171,7 @@ static int num;
  * func:
  *      update local status
  */
-void update_status()
+void update_local_status()
 {
     node_s *pn;
     int i;
@@ -1152,43 +1185,112 @@ void update_status()
         }
     }
 
-    pn = snode_data[sa-1];
-    remove_status(sa-1);
-    for(i = 0; i < status_cnt; i++){
-        stat2tree(pn, &status_data[i]);
+    // pn = snode_data[sa-1];
+    // remove_status(sa-1);
+    remove_status(sa&0x000000FF);
+    add_local_status();
+    // for(i = 0; i < status_cnt; i++){
+    //     stat2tree(pn, &status_data[i]);
+    // }
+
+    return ;
+}
+
+void add_local_status(){
+    int i, nodeid;
+    node_s *node = NULL;
+    node_l *pl, *newl;
+
+    nodeid = (int)sa&0x000000FF;
+
+    //create sub status tree
+    node = create_node(status_data[0].type, status_data[0].name, status_data[0].pvalue);
+    for(i = 1; i < status_cnt; i++){
+        // fprintf(stderr, "%s,%d:%s\n", __func__, __LINE__, status_data[i].name);
+        stat2tree(node, &status_data[i]);
     }
+
+    //insert the new tree to sstatus by order
+    // pl = &sstatus->child_h;
+    // while(pl->next != NULL){
+    //     if(nodeid > getnumfromstr(pl->next->pnode->name)){
+    //         break;
+    //     }else{
+    //         pl = pl->next;
+    //     }
+    // }
+    // newl = (node_l*)malloc(sizeof(node_l));
+    // newl->pnode = node;
+    // newl->next = pl->next;
+    // pl->next = newl;
+    // if(newl->next == NULL){
+    //     sstatus->child_t.next = newl;
+    // }
+    insert_status_2tree(nodeid, node);
 
     return ;
 }
 
 /*
  * func:
- *      remove all status infomation without 'timeout'
+ *      insert a sub-status-tree to sstatus by order
  */
-void remove_status(int i)
+void insert_status_2tree(int nodeid, node_s *node)
 {
+    node_l *pl, *newl;
+
+    pl = &sstatus->child_h;
+    while(pl->next != NULL){
+        fprintf(stderr, "%s,%d:node:%d, from:%d\n", __func__, __LINE__, nodeid, getnumfromstr(pl->next->pnode->name));
+        if(nodeid < getnumfromstr(pl->next->pnode->name)){
+            break;
+        }else{
+            pl = pl->next;
+        }
+    }
+    newl = (node_l*)malloc(sizeof(node_l));
+    newl->pnode = node;
+    newl->next = pl->next;
+    pl->next = newl;
+    if(newl->next == NULL){
+        sstatus->child_t.next = newl;
+    }
+    return ;
+}
+
+/*
+ * func:
+ *      remove all status infomation without 'timeout'
+ * params:
+ *      nodeid:         node id, not index.
+ */
+void remove_status(int nodeid)
+{
+    char buf[64];
     node_l *p, *temp;
 
-    p = &snode_data[i]->child_h;
-    if(p->next != NULL){
-        p = p->next;
-        if(0 != strcmp(p->pnode->name, "timeout")){
-            fprintf(stderr, "error! 'timeout' is lost\n");
-            return ;
-        }
-        temp = p;
-        p = p->next;
-        temp->next = NULL;
-        while(p != NULL){
-            _del_node(p->pnode);
-            temp = p;
-            p = p->next;
-            free(temp);
-        }
-    }else{
-        fprintf(stderr, "error! 'timeout' is lost\n");
-    }
-    snode_data[i]->child_t = snode_data[i]->child_h;
+    sprintf(buf, CNAME_NODE "%d", nodeid);
+    del_node(sstatus, buf);
+    // p = &snode_data[i]->child_h;
+    // if(p->next != NULL){
+    //     p = p->next;
+    //     if(0 != strcmp(p->pnode->name, "timeout")){
+    //         fprintf(stderr, "error! 'timeout' is lost\n");
+    //         return ;
+    //     }
+    //     temp = p;
+    //     p = p->next;
+    //     temp->next = NULL;
+    //     while(p != NULL){
+    //         _del_node(p->pnode);
+    //         temp = p;
+    //         p = p->next;
+    //         free(temp);
+    //     }
+    // }else{
+    //     fprintf(stderr, "error! 'timeout' is lost\n");
+    // }
+    // snode_data[i]->child_t = snode_data[i]->child_h;
 
     return ;
 }
@@ -1300,13 +1402,13 @@ void *rcv_thread(void *arg)
             recvfrom(reqfd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
             if(pm->type == SMSG_REQ){
                 if(pm->node == sa){
-                    fprintf(stderr, "recv a requst msg from node %d, drop\n", pm->node);
+                    fprintf(stderr, "recv a requst msg from myself, node %d, drop it\n", pm->node);
                     continue;
                 }
 
                 fprintf(stderr, "recv a requst msg from node %d\n", pm->node);
                 pthread_mutex_lock(&pmutex);
-                update_status();
+                update_local_status();
                 gen_json(STATUS_PATH, status_root);
                 rval = send_info(reqfd, &cli);
                 if(rval != 0){
@@ -1318,17 +1420,25 @@ void *rcv_thread(void *arg)
         if(FD_ISSET(infofd, &rset)){
             recvfrom(infofd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
             if(pm->type == SMSG_INFO){
-                pthread_mutex_lock(&pmutex);
+                if(pm->node == sa){
+                    fprintf(stderr, "recv an info msg from myself, node %d, drop it\n", pm->node);
+                    continue;
+                }
                 fprintf(stderr, "recv an info msg from node %d\n", pm->node);
                 //printf("msg:[%s]\n", pm->buf);
+                pthread_mutex_lock(&pmutex);
 
                 rval = update_node_status(pm->node, pm->buf);
+                // if(rval){
+                //     update_time(pm->node, 0);
+                // }else{
+                //     update_time(pm->node, 15);
+                // }
                 if(rval){
-                    update_time(pm->node, 0);
+                    fprintf(stderr, "%s,%d:update_node_status failed, rval = %d\n", __func__, __LINE__, rval);
                 }else{
-                    update_time(pm->node, 15);
+                    gen_json(STATUS_PATH, status_root);
                 }
-                gen_json(STATUS_PATH, status_root);
                 pthread_mutex_unlock(&pmutex);
             }
         }
@@ -1407,6 +1517,8 @@ int send_info(int reqfd, void *cli)
 
 #if SOCKET_TEST
     msg.node = sa+1;
+    msg.node = (msg.node>MAX_NODE_CNT)?1:msg.node;
+    char test[64];
 #else
     msg.node = sa;
 #endif
@@ -1419,7 +1531,17 @@ int send_info(int reqfd, void *cli)
         switch(status_data[i].type){
             case JSON_NORMAL:
             case JSON_ARRAY:
+#if SOCKET_TEST
+                sprintf(test, CNAME_NODE "%d", (int)sa&0x000000FF);
+                if(strcmp(test, status_data[i].name) == 0){
+                    sprintf(test, CNAME_NODE "%d", (msg.node)&0x000000FF);
+                    sprintf(buf, "%s|", test);
+                }else{
+                    sprintf(buf, "%s|", status_data[i].name);
+                }
+#else
                 sprintf(buf, "%s|", status_data[i].name);
+#endif
                 llen += strlen(buf);
                 if(llen >= MAX_SOCK_LEN){
                     rval = 1;
@@ -1471,56 +1593,86 @@ void update_time(int addr, int value)
     mod_node(node, buf);
 }
 
-int update_node_status(int addr, char *pmsg)
+/*
+ * func:
+ *      update node information to sstatus according to pmsg, if success, it will set correspoding timeout[] to 15.
+ */ 
+int update_node_status(int nodeid, char *pmsg)
 {
     char *str1;
     int i, rval = 0;
-    sdata_s mould;
-
-    //remove old status
-    remove_status(addr-1);
+    // sdata_s mould;
+    node_s *node = NULL;
+    char name[64];
+    sdata_s sd;
 
     str1 = strtok(pmsg, "|");
     if(str1 != NULL){
         for(i = 0; i < status_cnt; i++){
-            if(strcmp(str1, status_data[i].name) == 0){
-                mould = status_data[i];
-                if(mould.type == JSON_NORMAL || mould.type == JSON_ARRAY){
-                    mould.pvalue = NULL;
-                }else if(mould.type == JSON_STRING){
-                    mould.pvalue = strtok(NULL, "|");
-                    if(mould.pvalue == NULL){
+            if(strncmp(str1, status_data[i].name, strlen(CNAME_NODE)) == 0){
+                fprintf(stderr, "%s,%d:name:str1:%s, sta_data:%s\n", __func__, __LINE__, str1, status_data[i].name);
+                sd = status_data[i];
+                strcpy(name, str1);
+                strcpy(sd.name, name);
+                if(sd.type == JSON_NORMAL || sd.type == JSON_ARRAY){
+                    sd.pvalue = NULL;
+                }else if(sd.type == JSON_STRING){
+                    sd.pvalue = strtok(NULL, "|");
+                    if(sd.pvalue == NULL){
                         rval = 1;
                         goto func_exit;
                     } 
                 }
-                stat2tree(snode_data[addr-1], &mould);
+                if(node == NULL){
+                    //create a sub-status-tree about receiving node information
+                    node = create_node(sd.type, sd.name, sd.pvalue);
+                }else{
+                    rval = 2;
+                    goto func_exit;
+                }
                 break;
             }
         }
     }
+    if(node == NULL){
+        rval = 3;
+        goto func_exit;
+    }
     while((str1 = strtok(NULL, "|")) != NULL){
         for(i = 0; i < status_cnt; i++){
             if(strcmp(str1, status_data[i].name) == 0){
-                mould = status_data[i];
-                if(mould.type == JSON_NORMAL || mould.type == JSON_ARRAY){
-                    mould.pvalue = NULL;
-                }else if(mould.type == JSON_STRING){
-                    mould.pvalue = strtok(NULL, "|");
-                    if(mould.pvalue == NULL){
-                        rval = 1;
+                sd = status_data[i];
+                if(strncmp(sd.fname, CNAME_NODE, strlen(CNAME_NODE)) == 0){
+                    fprintf(stderr, "%s,%d:fname:sd:%s, sta_data:%s\n", __func__, __LINE__, sd.fname, name);
+                    strcpy(sd.fname, name);
+                }
+                if(sd.type == JSON_NORMAL || sd.type == JSON_ARRAY){
+                    sd.pvalue = NULL;
+                }else if(sd.type == JSON_STRING){
+                    sd.pvalue = strtok(NULL, "|");
+                    if(sd.pvalue == NULL){
+                        rval = 4;
                         goto func_exit;
                     } 
                 }
-                stat2tree(snode_data[addr-1], &mould);
+                stat2tree(node, &sd);
                 break;
             }
         }
     }
 
+    //remove old status
+    remove_status(nodeid);
+
+    insert_status_2tree(nodeid, node);
+
 func_exit:
     if(rval){
-        remove_status(addr-1);
+        if(node != NULL){
+            _del_node(node);
+        }
+    }else{
+        timeout[nodeid-1] = 15;
     }
     return rval;
 }

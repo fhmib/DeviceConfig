@@ -292,7 +292,7 @@ void insert_node(node_s *dst, node_s *src)
 
 /*
  * func:
- *      delete a node and all childs belong to it, use it carefully, the use-method is refer to del_node() function.
+ *      delete a node and all childs belong to it, use it carefully because it doesn't care about its parent. The use-method is refer to del_node() function.
  */
 void _del_node(node_s *node)
 {
@@ -337,11 +337,18 @@ int del_node(node_s *node, const char *name)
     p = &node->child_h;
     while(p->next != NULL){
         if((0 == strcmp(p->next->pnode->name, name))){
+            fprintf(stderr, "%s,%d:deleting node name:%s\n", __func__, __LINE__, name);
             temp = p->next;
             p->next = temp->next;
 
-            //if the deleted node is the last one, It's very important to change chilt_t to the previous one
-            if(temp->next == NULL) node->child_t.next = p;
+            //if the deleted node is the last one, It's very important to change chilt_t to the previous one or NULL
+            if(temp->next == NULL){
+                if(node->child_h.next != NULL){
+                    node->child_t.next = p;
+                }else{
+                    node->child_t.next = NULL;
+                }
+            }
 
             _del_node(temp->pnode);
             free(temp);
@@ -415,6 +422,10 @@ node_s *search_node(node_s *node, const char *name)
 {
     node_l *p = NULL;
     node_s *res;
+
+    if(node == NULL){
+        return NULL;
+    }
 
     //printf("node->name=[%s], name=[%s]\n", node->name, name);
     if(0 == (strcmp(node->name, name))){
@@ -595,4 +606,21 @@ int ipishost(const char *buf)
     }else return 0;
 
     return 0;
+}
+
+int getnumfromstr(char *arg)
+{
+    int value;
+    char *p;
+
+    p = arg;
+    while(*p != 0){
+        if((*p >= '0') && (*p <= '9')){
+            sscanf(p, "%d", &value);
+            break;
+        }
+        p++;
+    }
+
+    return value;
 }

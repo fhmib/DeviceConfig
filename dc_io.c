@@ -9,6 +9,7 @@ extern sdata_s status_data[];
 extern int status_cnt;
 
 extern sdata_s info_t[];
+extern int info_cnt;
 
 extern U64 txbytes, txpackets, txerrors; 
 extern U64 rxbytes, rxpackets, rxerrors; 
@@ -67,6 +68,22 @@ func_exit:
         free_rdata(pd);
     }
     return 0;
+}
+
+int io_readfrominfo(int index, char mode, char *pvalue)
+{
+    int rval = 0;
+    int i;
+
+    for(i = 0; i < info_cnt; i++){
+        if(strcmp(status_data[index].name, info_t[i].name) == 0){
+            modify_value(&status_data[index].pvalue, info_t[i].pvalue);
+            break;
+        }
+    }
+
+func_exit:
+    return rval;
 }
 
 int io_macAddr(int index, char mode, char *pvalue)
@@ -264,17 +281,20 @@ int io_nodeId(int index, char mode, char *pvalue)
     FILE *fp = NULL;
 
     if(mode == 0){
-        for(i = 0; i < config_cnt; i++){
-            if(strcmp(status_data[index].name, config_t[i].name) == 0)
-                break;
-        }
-        if(i >= config_cnt){
-            fprintf(stderr, "%s:cannot find %s in config_t\n", __func__, status_data[index].name);
-            rval = 1;
-            goto func_exit;
-        }
+        // for(i = 0; i < config_cnt; i++){
+        //     if(strcmp(status_data[index].name, config_t[i].name) == 0)
+        //         break;
+        // }
+        // if(i >= config_cnt){
+        //     fprintf(stderr, "%s:cannot find %s in config_t\n", __func__, status_data[index].name);
+        //     rval = 1;
+        //     goto func_exit;
+        // }
 
-        modify_value(&status_data[index].pvalue, config_t[i].pvalue);
+        // modify_value(&status_data[index].pvalue, config_t[i].pvalue);
+        char buf[8];
+        sprintf(buf, "%d", (int)sa&0x000000FF);
+        modify_value(&status_data[index].pvalue, buf);
     }else{
         sscanf(pvalue, "%d", &value);
         if((value > MAX_NODE_CNT) || (value < 0)){
@@ -595,24 +615,6 @@ int io_audioVol(int index, char mode, char *pvalue)
 
 func_exit:
     return rval;
-}
-
-int getnumfromstr(char *arg)
-{
-    char value = -1;
-    char *p;
-
-    p = arg;
-    while(*p != 0){
-        if((*p >= '0') && (*p <= '9')){
-            sscanf(p, "%c", &value);
-            value -= '0';
-            break;
-        }
-        p++;
-    }
-
-    return (int)value;
 }
 
 /*

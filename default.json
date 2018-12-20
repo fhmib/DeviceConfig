@@ -1,10 +1,10 @@
 {
 	"flags": {
-		"config": "0",
+		"config": "1",
 		"reset": "0"
 	},
 	"main": {
-		"nodeId": "4",
+		"nodeId": "24",
 		"nodeName": "2WL-1608004",
 		"meshId": "157",
 		"centreFreq": "1395",
