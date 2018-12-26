@@ -31,7 +31,7 @@
 #define U32                         unsigned int
 #define U64                         unsigned long long
 
-#define ON_BOARD                    1
+#define ON_BOARD                    0
 #define PRINT_COMMAND               1
 #define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
 
@@ -166,56 +166,56 @@
 //#define JSON_STRING                 3
 //#define JSON_CUSTOM1                4
 
-typedef enum{
+typedef enum {
     JSON_BRACKET,
     JSON_NORMAL,
     JSON_ARRAY,
     JSON_STRING,
     JSON_CUSTOM1,
-}JSON_TYPE;
+} JSON_TYPE;
 
-typedef enum{
+typedef enum {
     SMSG_REQ,
     SMSG_INFO,
-}SMSG_TYPE;
+} SMSG_TYPE;
 
-typedef struct _smsg_t{
+typedef struct _smsg_t {
     U8 type;
     U8 node;
     char buf[MAX_SOCK_LEN];
-}smsg_t;
-#define SMSG_LEN        sizeof(smsg_t)
+} smsg_t;
+#define SMSG_LEN sizeof(smsg_t)
 
-typedef struct _mmsg_t{
+typedef struct _mmsg_t {
     long mtype;
     U8 node;
     char data[MAX_MSG_LEN];
-}mmsg_t;
-#define MMSG_LEN        sizeof(mmsg_t)
+} mmsg_t;
+#define MMSG_LEN sizeof(mmsg_t)
 
-typedef struct _mnhd_t{
+typedef struct _mnhd_t {
     long type;
-}mnhd_t;
-#define MNHD_LEN        sizeof(mnhd_t)
+} mnhd_t;
+#define MNHD_LEN sizeof(mnhd_t)
 
 typedef struct _node_l node_l;
 typedef struct _node_s node_s;
 
-typedef struct _node_l{
-    node_s *pnode;
-    struct _node_l *next;
-}node_l;
+typedef struct _node_l {
+    node_s* pnode;
+    struct _node_l* next;
+} node_l;
 
-typedef struct _node_s{
-    char type;              //type of node
+typedef struct _node_s {
+    char type; //type of node
 
-    char name[64];          //name of parameter
-    char *pvalue;           //pointer to the value of parameter
-    char isstr;             //whether it is a string
+    char name[64]; //name of parameter
+    char* pvalue; //pointer to the value of parameter
+    char isstr; //whether it is a string
 
-    node_l child_h;        //head of child
-    node_l child_t;        //tail of child
-}node_s;
+    node_l child_h; //head of child
+    node_l child_t; //tail of child
+} node_s;
 
 #if 0
 //struct for store read-only data
@@ -235,15 +235,15 @@ typedef struct _data_s{
 #endif
 
 //struct for store status data and transfer
-typedef struct _sdata_s{
+typedef struct _sdata_s {
     char type;
     char name[64];
-    char *pvalue;
+    char* pvalue;
     //int length;                     //length of value
-    int (*pfunc)(int, char, char*);    //pointer to function reads/writes value of the parameter
-    char fname[64];                 //father's name of tree
+    int (*pfunc)(int, char, char*); //pointer to function reads/writes value of the parameter
+    char fname[64]; //father's name of tree
     char isstr;
-}sdata_s;
+} sdata_s;
 
 #if 0
 //struct for store local config data
@@ -257,28 +257,28 @@ typedef struct _cdata_s{
 #endif
 
 //struct for store data from json file
-typedef struct _rdata_s{
+typedef struct _rdata_s {
     char name[64];
-    char *pvalue;
-    struct _rdata_s *next;
-}rdata_s;
+    char* pvalue;
+    struct _rdata_s* next;
+} rdata_s;
 
-typedef struct _tproc_t{
+typedef struct _tproc_t {
     char name[64];
     int period;
     int wait;
     void (*pf)(U32);
     U32 para;
-}tproc_t;
+} tproc_t;
 
-typedef struct _timers_s{
+typedef struct _timers_s {
     pthread_mutex_t mutex;
     U32 tmap;
     U32 tmask;
     tproc_t procs[32];
-}timers_s;
+} timers_s;
 
-typedef struct _mac_state{
+typedef struct _mac_state {
     U16 rfnt;
     U8 sta;
     U8 tbs;
@@ -292,7 +292,7 @@ typedef struct _mac_state{
     U16 sfb2l;
     U8 dsmap[55];
     U8 vmode;
-}mac_state;
+} mac_state;
 
 void print_info(char*);
 int init_tree();
@@ -302,7 +302,7 @@ void update_sig();
 void update_info();
 void update_dvlp();
 void update_config(rdata_s*);
-void *timer_thread(void*);
+void* timer_thread(void*);
 int timer_add(const char*, int, void (*)(U32), U32);
 void do_task();
 void chk_online(U32);
@@ -318,7 +318,7 @@ void add_local_status();
 void insert_status_2tree(int, node_s*);
 void remove_status(int);
 //void _remove_status(node_s*);
-void *rcv_thread(void*);
+void* rcv_thread(void*);
 int dc_init();
 void send_req();
 int send_info(int, void*);
@@ -329,14 +329,14 @@ int stat2tree(node_s*, sdata_s*);
 int gen_json(const char*, node_s*);
 void first_tree(FILE*, int, node_s*);
 int gen_tree(node_s*, sdata_s*, int);
-node_s *create_node(int, const char*, const char*, char);
+node_s* create_node(int, const char*, const char*, char);
 void insert_node(node_s*, node_s*);
 int del_node(node_s*, const char*);
 void _del_node(node_s*);
 int remove_childs(node_s*);
 void mod_node(node_s*, const char*);
-node_s *search_node(node_s*,const char*);
-rdata_s *read_json(const char*, const char*);
+node_s* search_node(node_s*, const char*);
+rdata_s* read_json(const char*, const char*);
 void free_rdata(rdata_s*);
 void modify_value(char**, const char*);
 int read_ipaddr(const char*, int*);

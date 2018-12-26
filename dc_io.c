@@ -11,8 +11,8 @@ extern int status_cnt;
 extern sdata_s info_t[];
 extern int info_cnt;
 
-extern U64 txbytes, txpackets, txerrors; 
-extern U64 rxbytes, rxpackets, rxerrors; 
+extern U64 txbytes, txpackets, txerrors;
+extern U64 rxbytes, rxpackets, rxerrors;
 extern struct timeval now_tv, pre_tv;
 
 extern sdata_s config_t[];
@@ -27,12 +27,10 @@ extern char port_flag[];
 extern char route_flag[];
 
 //for configure uart
-int name_arr[] = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300};
+int name_arr[] = { 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300 };
 
 //store the return address of function mmap()
-void *g_FPGA_pntr = NULL;
-
-
+void* g_FPGA_pntr = NULL;
 
 /*
  * describe:
@@ -45,10 +43,7 @@ void *g_FPGA_pntr = NULL;
  *      pvalue:             config value
  */
 
-
-
-
-int io_undo(int index, char mode, char *pvalue)
+int io_undo(int index, char mode, char* pvalue)
 {
     return 0;
 }
@@ -57,19 +52,19 @@ int io_undo(int index, char mode, char *pvalue)
  * func:
  *      read information from 'devinfo' and store the value to 'info_t[]'.
  */
-int io_readInfo(int index, char mode, char *pvalue)
+int io_readInfo(int index, char mode, char* pvalue)
 {
-    rdata_s *pd = NULL;
+    rdata_s* pd = NULL;
 
     pd = read_json(INFO_PATH, info_t[index].name);
-    if(pd != NULL){
+    if (pd != NULL) {
         modify_value(&info_t[index].pvalue, pd->pvalue);
-    }else{
+    } else {
         goto func_exit;
     }
 
 func_exit:
-    if(pd != NULL){
+    if (pd != NULL) {
         free_rdata(pd);
     }
     return 0;
@@ -79,13 +74,13 @@ func_exit:
  * func:
  *      read information from 'info_t[]' and store the value to 'status_data[]'.
  */
-int io_readfrominfo(int index, char mode, char *pvalue)
+int io_readfrominfo(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int i;
 
-    for(i = 0; i < info_cnt; i++){
-        if(strcmp(status_data[index].name, info_t[i].name) == 0){
+    for (i = 0; i < info_cnt; i++) {
+        if (strcmp(status_data[index].name, info_t[i].name) == 0) {
             modify_value(&status_data[index].pvalue, info_t[i].pvalue);
             break;
         }
@@ -95,38 +90,40 @@ func_exit:
     return rval;
 }
 
-int io_macAddr(int index, char mode, char *pvalue)
+int io_macAddr(int index, char mode, char* pvalue)
 {
     struct ifaddrs *ifa, *ifaddr = NULL;
-    struct sockaddr_ll *mac_addr;
+    struct sockaddr_ll* mac_addr;
     char buf[32], temp[8];
     int i;
 
-    if(getifaddrs(&ifaddr) < 0){
+    if (getifaddrs(&ifaddr) < 0) {
         perror("getifaddrs");
         goto func_exit;
     }
 
-    for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next){
-        if(ifa->ifa_addr->sa_family != AF_PACKET) continue;
-        if(strcmp(ifa->ifa_name, NET_DEV_NAME) != 0) continue;
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr->sa_family != AF_PACKET)
+            continue;
+        if (strcmp(ifa->ifa_name, NET_DEV_NAME) != 0)
+            continue;
         buf[0] = 0;
         mac_addr = (struct sockaddr_ll*)ifa->ifa_addr;
-        for(i = 0; i < 6; i++){
-            sprintf(temp, "%02x%s", mac_addr->sll_addr[i], (i<5)?":":"");
+        for (i = 0; i < 6; i++) {
+            sprintf(temp, "%02x%s", mac_addr->sll_addr[i], (i < 5) ? ":" : "");
             strcat(buf, temp);
-        } 
+        }
         modify_value(&info_t[index].pvalue, buf);
     }
 
 func_exit:
-    if(ifaddr != NULL){
+    if (ifaddr != NULL) {
         freeifaddrs(ifaddr);
     }
     return 0;
 }
 
-int io_ipTxByteCnt(int index, char mode, char *pvalue)
+int io_ipTxByteCnt(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[32];
@@ -146,7 +143,7 @@ int io_ipTxByteCnt(int index, char mode, char *pvalue)
     return rval;
 }
 
-int io_ipTxPktCnt(int index, char mode, char *pvalue)
+int io_ipTxPktCnt(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[32];
@@ -157,7 +154,7 @@ int io_ipTxPktCnt(int index, char mode, char *pvalue)
     return rval;
 }
 
-int io_ipTxErrorCnt(int index, char mode, char *pvalue)
+int io_ipTxErrorCnt(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[32];
@@ -168,7 +165,7 @@ int io_ipTxErrorCnt(int index, char mode, char *pvalue)
     return rval;
 }
 
-int io_ipRxByteCnt(int index, char mode, char *pvalue)
+int io_ipRxByteCnt(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[32];
@@ -179,7 +176,7 @@ int io_ipRxByteCnt(int index, char mode, char *pvalue)
     return rval;
 }
 
-int io_ipRxPktCnt(int index, char mode, char *pvalue)
+int io_ipRxPktCnt(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[32];
@@ -190,7 +187,7 @@ int io_ipRxPktCnt(int index, char mode, char *pvalue)
     return rval;
 }
 
-int io_ipRxErrorCnt(int index, char mode, char *pvalue)
+int io_ipRxErrorCnt(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[32];
@@ -201,7 +198,7 @@ int io_ipRxErrorCnt(int index, char mode, char *pvalue)
     return rval;
 }
 
-int io_voltage(int index, char mode, char *pvalue)
+int io_voltage(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int ivol;
@@ -210,12 +207,12 @@ int io_voltage(int index, char mode, char *pvalue)
 
 #if ON_BOARD
     rval = readvaluefromfile(VOLTAGE_PATH, &ivol);
-    if(rval){
+    if (rval) {
         fprintf(stderr, "%s,%d:read file failed\n", __func__, __LINE__);
         rval = 1;
         goto func_exit;
     }
-    dvol = (double)ivol/4.096*23.1/1000;
+    dvol = (double)ivol / 4.096 * 23.1 / 1000;
     sprintf(buf, "%.2lf", dvol);
     modify_value(&status_data[index].pvalue, buf);
 #endif
@@ -224,7 +221,7 @@ func_exit:
     return rval;
 }
 
-int io_temperature(int index, char mode, char *pvalue)
+int io_temperature(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int itemp;
@@ -233,12 +230,12 @@ int io_temperature(int index, char mode, char *pvalue)
 
 #if ON_BOARD
     rval = readvaluefromfile(TEMP_PATH, &itemp);
-    if(rval){
+    if (rval) {
         fprintf(stderr, "%s,%d:read file failed\n", __func__, __LINE__);
         rval = 1;
         goto func_exit;
     }
-    dtemp = ((double)itemp*503.975)/4096 - 273.15;
+    dtemp = ((double)itemp * 503.975) / 4096 - 273.15;
     sprintf(buf, "%.2lf", dtemp);
     modify_value(&status_data[index].pvalue, buf);
 #endif
@@ -247,23 +244,23 @@ func_exit:
     return rval;
 }
 
-int io_ipAddress(int index, char mode, char *pvalue)
+int io_ipAddress(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[16];
     char wbuf[64];
     struct ifaddrs *ifaddr, *ifa;
-    struct sockaddr_in *ifinfo;
+    struct sockaddr_in* ifinfo;
 
-    if(mode == 0){
-        if(getifaddrs(&ifaddr) < 0){
+    if (mode == 0) {
+        if (getifaddrs(&ifaddr) < 0) {
             perror("getifaddr");
             rval = 1;
             goto func_exit;
         }
-        for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next){
+        for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
             ifinfo = (struct sockaddr_in*)ifa->ifa_addr;
-            if((ifinfo->sin_family != AF_INET) || (strcmp(ifa->ifa_name, NET_DEV_NAME) != 0))
+            if ((ifinfo->sin_family != AF_INET) || (strcmp(ifa->ifa_name, NET_DEV_NAME) != 0))
                 continue;
             inet_ntop(AF_INET, &ifinfo->sin_addr.s_addr, buf, 16);
             //printf("device name:%s\n", ifa->ifa_name);
@@ -273,7 +270,7 @@ int io_ipAddress(int index, char mode, char *pvalue)
 
         modify_value(&status_data[index].pvalue, buf);
         freeifaddrs(ifaddr);
-    }else{
+    } else {
         sprintf(wbuf, "ifconfig " NET_DEV_NAME " %s", pvalue);
 #if PRINT_COMMAND
         fprintf(stderr, "%s\n", wbuf);
@@ -287,7 +284,7 @@ func_exit:
     return rval;
 }
 
-int io_ipMask(int index, char mode, char *pvalue)
+int io_ipMask(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char wbuf[64];
@@ -303,7 +300,7 @@ int io_ipMask(int index, char mode, char *pvalue)
     return rval;
 }
 
-int io_ipGateway(int index, char mode, char *pvalue)
+int io_ipGateway(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char wbuf[64];
@@ -329,13 +326,13 @@ int io_ipGateway(int index, char mode, char *pvalue)
     return rval;
 }
 
-int io_nodeId(int index, char mode, char *pvalue)
+int io_nodeId(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int i, value;
-    FILE *fp = NULL;
+    FILE* fp = NULL;
 
-    if(mode == 0){
+    if (mode == 0) {
         // for(i = 0; i < config_cnt; i++){
         //     if(strcmp(status_data[index].name, config_t[i].name) == 0)
         //         break;
@@ -348,17 +345,17 @@ int io_nodeId(int index, char mode, char *pvalue)
 
         // modify_value(&status_data[index].pvalue, config_t[i].pvalue);
         char buf[8];
-        sprintf(buf, "%d", (int)sa&0x000000FF);
+        sprintf(buf, "%d", (int)sa & 0x000000FF);
         modify_value(&status_data[index].pvalue, buf);
-    }else{
+    } else {
         sscanf(pvalue, "%d", &value);
-        if((value > MAX_NODE_CNT) || (value < 0)){
+        if ((value > MAX_NODE_CNT) || (value < 0)) {
             fprintf(stderr, "%s: %d is invalid\n", __func__, value);
             rval = 2;
             goto func_exit;
         }
         rval = modify_file(XD_INIT_PATH, "inode_id=", "=", NULL, pvalue);
-        if(rval){
+        if (rval) {
             fprintf(stderr, "%s:modify_file failed, rval = %d\n", __func__, rval);
             rval = 3;
             goto func_exit;
@@ -366,53 +363,53 @@ int io_nodeId(int index, char mode, char *pvalue)
     }
 
 func_exit:
-    if(fp != NULL){
+    if (fp != NULL) {
         free(fp);
         fp = NULL;
     }
     return rval;
 }
 
-int io_nodeName(int index, char mode, char *pvalue)
+int io_nodeName(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int i;
-    FILE *fp = NULL;
+    FILE* fp = NULL;
 
-    if(mode == 0){
-        for(i = 0; i < config_cnt; i++){
-            if(strcmp(status_data[index].name, config_t[i].name) == 0)
+    if (mode == 0) {
+        for (i = 0; i < config_cnt; i++) {
+            if (strcmp(status_data[index].name, config_t[i].name) == 0)
                 break;
         }
-        if(i >= config_cnt){
+        if (i >= config_cnt) {
             fprintf(stderr, "%s:cannot find %s in config_t\n", __func__, status_data[index].name);
             rval = 1;
             goto func_exit;
         }
 
         modify_value(&status_data[index].pvalue, config_t[i].pvalue);
-    }else{
+    } else {
         rval = 0;
     }
 
 func_exit:
-    if(fp != NULL){
+    if (fp != NULL) {
         free(fp);
         fp = NULL;
     }
     return rval;
 }
 
-int io_chanBW(int index, char mode, char *pvalue)
+int io_chanBW(int index, char mode, char* pvalue)
 {
     int rval = 0;
 
-    if(mode == 0){
+    if (mode == 0) {
         rval = 1;
         goto func_exit;
-    }else{
+    } else {
         rval = modify_ini(XD_CONFIG_PATH, "BANDW", pvalue);
-        if(rval){
+        if (rval) {
             fprintf(stderr, "%s:modify_ini failed, rval = %d\n", __func__, rval);
             rval = 2;
             goto func_exit;
@@ -420,21 +417,21 @@ int io_chanBW(int index, char mode, char *pvalue)
     }
 
 func_exit:
-    return rval; 
+    return rval;
 }
 
-int io_tfci(int index, char mode, char *pvalue)
+int io_tfci(int index, char mode, char* pvalue)
 {
     int rval = 0;
     mmsg_t msg;
     int len = 0;
-    mnhd_t *mnhd;
+    mnhd_t* mnhd;
     U32 set_tfci;
 
-    if(mode == 0){
+    if (mode == 0) {
         rval = 1;
         goto func_exit;
-    }else{
+    } else {
         sscanf(pvalue, "%u", &set_tfci);
         //fprintf(stderr, "%s:pvalue[%s], set_tfci:%u\n", __func__, pvalue, set_tfci);
 
@@ -463,7 +460,7 @@ int io_tfci(int index, char mode, char *pvalue)
         fprintf(stderr, "mtype:%ld ", msg.mtype);
         fprintf(stderr, "node:%u ", msg.node);
         fprintf(stderr, "type:%ld ", mnhd->type);
-        fprintf(stderr, "set_tfci:%u ", 0x000000FF&((U32)(*(msg.data + MNHD_LEN))));
+        fprintf(stderr, "set_tfci:%u ", 0x000000FF & ((U32)(*(msg.data + MNHD_LEN))));
         fprintf(stderr, "\n");
 #else
         msgsnd(mn_qid, &msg, len, 0);
@@ -474,15 +471,15 @@ func_exit:
     return rval;
 }
 
-int io_txPower(int index, char mode, char *pvalue)
+int io_txPower(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int rd_data;
 
-    if(mode == 0){
+    if (mode == 0) {
         rval = 1;
         goto func_exit;
-    }else{
+    } else {
         rd_data = abs(atoi((char*)pvalue));
         rd_data = 4 * rd_data;
 
@@ -498,28 +495,28 @@ func_exit:
     return rval;
 }
 
-int io_dataRate(int index, char mode, char *pvalue)
+int io_dataRate(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int i, cnt, value;
 
-    if(mode == 0){
+    if (mode == 0) {
         rval = 1;
         goto func_exit;
-    }else{
+    } else {
         //fprintf(stderr, "%s:%d\n", __func__, i);
         sscanf(pvalue, "%d", &value);
-        cnt = sizeof(name_arr)/sizeof(int);
-        for(i = 0; i < cnt; i++){
-            if(value == name_arr[i]){
+        cnt = sizeof(name_arr) / sizeof(int);
+        for (i = 0; i < cnt; i++) {
+            if (value == name_arr[i]) {
                 break;
             }
         }
 
-        if(i >= cnt){
+        if (i >= cnt) {
             rval = 2;
             goto func_exit;
-        }else{
+        } else {
             i = getnumfromstr(config_t[index].name);
             port_flag[i] = 1;
         }
@@ -529,24 +526,24 @@ func_exit:
     return rval;
 }
 
-int io_dataParity(int index, char mode, char *pvalue)
+int io_dataParity(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int i;
 
-    if(mode == 0){
+    if (mode == 0) {
         rval = 1;
         goto func_exit;
-    }else{
+    } else {
         //fprintf(stderr, "%s:%d\n", __func__, i);
-        if((strcmp(pvalue, "Odd") != 0) && (strcmp(pvalue, "Even") != 0)\
-                && (strcmp(pvalue, "None") != 0) && (strcmp(pvalue, "odd") != 0)\
-                && (strcmp(pvalue, "even") != 0) && (strcmp(pvalue, "none") != 0)\
-                && (strcmp(pvalue, "ODD") != 0) && (strcmp(pvalue, "EVEN") != 0)\
-                && (strcmp(pvalue, "NONE") != 0)){
+        if ((strcmp(pvalue, "Odd") != 0) && (strcmp(pvalue, "Even") != 0)
+            && (strcmp(pvalue, "None") != 0) && (strcmp(pvalue, "odd") != 0)
+            && (strcmp(pvalue, "even") != 0) && (strcmp(pvalue, "none") != 0)
+            && (strcmp(pvalue, "ODD") != 0) && (strcmp(pvalue, "EVEN") != 0)
+            && (strcmp(pvalue, "NONE") != 0)) {
             rval = 2;
             goto func_exit;
-        }else{
+        } else {
             i = getnumfromstr(config_t[index].name);
             port_flag[i] = 1;
         }
@@ -556,17 +553,17 @@ func_exit:
     return rval;
 }
 
-int io_route(int index, char mode, char *pvalue)
+int io_route(int index, char mode, char* pvalue)
 {
     int rval = 0;
     int i;
 
-    if(mode == 0){
+    if (mode == 0) {
         rval = 1;
         goto func_exit;
-    }else{
+    } else {
         i = getnumfromstr(config_t[index].name);
-        if(route_flag[i] == 0){
+        if (route_flag[i] == 0) {
             del_route(i);
         }
         route_flag[i] = 1;
@@ -576,18 +573,18 @@ func_exit:
     return rval;
 }
 
-int io_audioEnable(int index, char mode, char *pvalue)
+int io_audioEnable(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[128];
     int value;
 
-    if(mode == 0){
+    if (mode == 0) {
         rval = 1;
         goto func_exit;
-    }else if(mode == 2){
+    } else if (mode == 2) {
         sscanf(pvalue, "%d", &value);
-        if(value != 0){
+        if (value != 0) {
             sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
             usleep(100000);
 
@@ -597,7 +594,7 @@ int io_audioEnable(int index, char mode, char *pvalue)
 #if ON_BOARD
             system(buf);
 #endif
-        }else{
+        } else {
             sprintf(buf, "killall " AUDIO_NAME);
 
 #if PRINT_COMMAND
@@ -606,12 +603,11 @@ int io_audioEnable(int index, char mode, char *pvalue)
 #if ON_BOARD
             system(buf);
 #endif
-
         }
 
-    }else if(mode == 1){
+    } else if (mode == 1) {
         sscanf(pvalue, "%d", &value);
-        if(value != 0){
+        if (value != 0) {
             sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
             usleep(100000);
 
@@ -628,32 +624,32 @@ func_exit:
     return rval;
 }
 
-int io_audioVol(int index, char mode, char *pvalue)
+int io_audioVol(int index, char mode, char* pvalue)
 {
     int rval = 0;
     char buf[128];
     int value;
 
-    if(mode == 0){
+    if (mode == 0) {
         rval = 1;
         goto func_exit;
-    }else{
+    } else {
         sscanf(pvalue, "%d", &value);
 
-        if(strcmp(config_t[index].name, CNAME_AUDIOPLAY) == 0){
-            if((value < 0) || (value > 63)){
+        if (strcmp(config_t[index].name, CNAME_AUDIOPLAY) == 0) {
+            if ((value < 0) || (value > 63)) {
                 rval = 2;
                 goto func_exit;
             }
             sprintf(buf, "%s%s", buf_playvol, pvalue);
-        }else if(strcmp(config_t[index].name, CNAME_AUDIOMIC) == 0){
-            if((value < 0) || (value > 63)){
+        } else if (strcmp(config_t[index].name, CNAME_AUDIOMIC) == 0) {
+            if ((value < 0) || (value > 63)) {
                 rval = 2;
                 goto func_exit;
             }
             sprintf(buf, "%s%s", buf_capvol, pvalue);
-        }else if(strcmp(config_t[index].name, CNAME_AUDIOALC) == 0){
-            if((value < 0) || (value > 31)){
+        } else if (strcmp(config_t[index].name, CNAME_AUDIOALC) == 0) {
+            if ((value < 0) || (value > 31)) {
                 rval = 2;
                 goto func_exit;
             }
@@ -676,36 +672,36 @@ func_exit:
  * func:
  *      according to a keyword, modify the line after its line, use for 'config.ini'.
  */
-int modify_ini(const char *file_path, const char *p_kw, const char *p_str)
+int modify_ini(const char* file_path, const char* p_kw, const char* p_str)
 {
     int rval = 0;
     int len, size, i;
     char flag = 0;
     char line[1024];
-    char *pkw = NULL;
-    char *pstr = NULL;
-    char *file_tmp = NULL;
-    FILE *fp = NULL;
+    char* pkw = NULL;
+    char* pstr = NULL;
+    char* file_tmp = NULL;
+    FILE* fp = NULL;
 
-    if(file_path == NULL || p_kw == NULL || p_str == NULL){
+    if (file_path == NULL || p_kw == NULL || p_str == NULL) {
         rval = 1;
         goto func_exit;
     }
 
     len = strlen(p_kw);
-    if(len <= 0){
+    if (len <= 0) {
         rval = 2;
         goto func_exit;
     }
-    pkw = (char*)malloc(len+1);
+    pkw = (char*)malloc(len + 1);
     strcpy(pkw, p_kw);
 
     len = strlen(p_str);
-    if(len <= 0){
+    if (len <= 0) {
         rval = 3;
         goto func_exit;
     }
-    pstr = (char*)malloc(len+1);
+    pstr = (char*)malloc(len + 1);
     strcpy(pstr, p_str);
 
     size = file_size(file_path);
@@ -715,44 +711,45 @@ int modify_ini(const char *file_path, const char *p_kw, const char *p_str)
 
     //open file
     fp = fopen(file_path, "r");
-    if(fp == NULL){
+    if (fp == NULL) {
         rval = 4;
         goto func_exit;
     }
 
-    while(!feof(fp)){
-        if(NULL == fgets(line, sizeof(line), fp)){
+    while (!feof(fp)) {
+        if (NULL == fgets(line, sizeof(line), fp)) {
             continue;
         }
 
         len = strlen(line);
-        for(i = 0; i < len; i++){
-            if(' ' == line[i]) continue;
-            else break;
+        for (i = 0; i < len; i++) {
+            if (' ' == line[i])
+                continue;
+            else
+                break;
         }
 
         //ingore commented line and space line
-        if('#' == line[i]){
+        if ('#' == line[i]) {
             strcat(file_tmp, line);
             continue;
         }
 
-        switch(flag){
-            case 0:
-                if(NULL != strstr(line, pkw)){
-                    flag = 1;
-                }
-                break;
-            case 1:
-                sprintf(line, "%s\n", pstr);
-                flag = 2;
-                break;
-            default:
-                break;
+        switch (flag) {
+        case 0:
+            if (NULL != strstr(line, pkw)) {
+                flag = 1;
+            }
+            break;
+        case 1:
+            sprintf(line, "%s\n", pstr);
+            flag = 2;
+            break;
+        default:
+            break;
         }
 
         strcat(file_tmp, line);
-
     }
 
     //write file
@@ -761,10 +758,14 @@ int modify_ini(const char *file_path, const char *p_kw, const char *p_str)
     fprintf(fp, "%s", file_tmp);
 
 func_exit:
-    if(fp != NULL) fclose(fp);
-    if(pkw != NULL) free(pkw);
-    if(pstr != NULL) free(pstr);
-    if(file_tmp != NULL) free(file_tmp);
+    if (fp != NULL)
+        fclose(fp);
+    if (pkw != NULL)
+        free(pkw);
+    if (pstr != NULL)
+        free(pstr);
+    if (file_tmp != NULL)
+        free(file_tmp);
 
     return rval;
 }
@@ -783,7 +784,7 @@ func_exit:
  *      0:                  success
  *      other:              failure
  */
-int modify_file(const char *file_path, const char *p_kw, const char *p_head, const char *p_end, const char *p_str)
+int modify_file(const char* file_path, const char* p_kw, const char* p_head, const char* p_end, const char* p_str)
 {
     //declare and initialze variables
     int rval = 0;
@@ -793,60 +794,60 @@ int modify_file(const char *file_path, const char *p_kw, const char *p_head, con
     char flag = 0;
     char line[1024];
     char *pos_h, *pos_e;
-    char *file_tmp = NULL;
-    char *line_tmp = NULL;
-    FILE *fp = NULL;
-    char *pkw = NULL;
-    char *ph = NULL;
-    char *pe = NULL;
-    char *str = NULL;
+    char* file_tmp = NULL;
+    char* line_tmp = NULL;
+    FILE* fp = NULL;
+    char* pkw = NULL;
+    char* ph = NULL;
+    char* pe = NULL;
+    char* str = NULL;
 
     //check and save parameters
-    if(file_path == NULL || p_head == NULL || p_str == NULL){
+    if (file_path == NULL || p_head == NULL || p_str == NULL) {
         rval = 1;
         goto func_exit;
     }
 
     len = strlen(p_head);
-    if(len <= 0){
+    if (len <= 0) {
         rval = 2;
         goto func_exit;
     }
-    ph = (char*)malloc(len+1);
+    ph = (char*)malloc(len + 1);
     strcpy(ph, p_head);
 
-    if(p_kw == NULL) pkw = ph;
-    else{
+    if (p_kw == NULL)
+        pkw = ph;
+    else {
         len = strlen(p_kw);
-        if(len <= 0){
+        if (len <= 0) {
             rval = 3;
             goto func_exit;
         }
-        pkw = (char*)malloc(len+1);
+        pkw = (char*)malloc(len + 1);
         strcpy(pkw, p_kw);
     }
 
-    if(p_end == NULL){
+    if (p_end == NULL) {
         pe = (char*)malloc(2);
         *pe = '\n';
-        *(pe+1) = 0;
-    }
-    else{
+        *(pe + 1) = 0;
+    } else {
         len = strlen(p_end);
-        if(len <= 0){
+        if (len <= 0) {
             rval = 4;
             goto func_exit;
         }
-        pe = (char*)malloc(len+1);
+        pe = (char*)malloc(len + 1);
         strcpy(pe, p_end);
     }
 
     len = strlen(p_str);
-    if(len <= 0){
+    if (len <= 0) {
         rval = 5;
         goto func_exit;
     }
-    str = (char*)malloc(len+1);
+    str = (char*)malloc(len + 1);
     strcpy(str, p_str);
 
     size = file_size(file_path);
@@ -856,42 +857,44 @@ int modify_file(const char *file_path, const char *p_kw, const char *p_head, con
 
     //open file
     fp = fopen(file_path, "r");
-    if(fp == NULL){
+    if (fp == NULL) {
         rval = 6;
         goto func_exit;
     }
 
     //read file and insert string
-    while(!feof(fp)){
-        if(NULL == fgets(line, sizeof(line), fp)){
+    while (!feof(fp)) {
+        if (NULL == fgets(line, sizeof(line), fp)) {
             continue;
         }
-        if((NULL == strstr(line, pkw)) || (flag)){
+        if ((NULL == strstr(line, pkw)) || (flag)) {
             strcat(file_tmp, line);
             continue;
         }
 
         len = strlen(line);
-        for(i = 0; i < len; i++){
-            if(' ' == line[i]) continue;
-            else break;
+        for (i = 0; i < len; i++) {
+            if (' ' == line[i])
+                continue;
+            else
+                break;
         }
 
         //ingore commented line
-        if('#' == line[i] || ('/' == line[i] && '/' == line[i+1])){
+        if ('#' == line[i] || ('/' == line[i] && '/' == line[i + 1])) {
             strcat(file_tmp, line);
             continue;
         }
 
         pos_h = strstr(line, ph);
-        if(NULL == pos_h){
+        if (NULL == pos_h) {
             rval = 7;
             fprintf(stderr, "%s:line=[%s], ph=[%s]\n", __func__, line, ph);
             goto func_exit;
         }
         pos_h += strlen(ph);
         pos_e = strstr(pos_h, pe);
-        if(NULL == pos_e){
+        if (NULL == pos_e) {
             rval = 8;
             goto func_exit;
         }
@@ -920,34 +923,35 @@ int modify_file(const char *file_path, const char *p_kw, const char *p_head, con
     fp = NULL;
 
 func_exit:
-    if(line_tmp != NULL){
+    if (line_tmp != NULL) {
         free(line_tmp);
         line_tmp = NULL;
     }
-    if(file_tmp != NULL){
+    if (file_tmp != NULL) {
         free(file_tmp);
         file_tmp = NULL;
     }
-    if(pkw != NULL){
-        if(pkw == ph) pkw = NULL;
-        else{
+    if (pkw != NULL) {
+        if (pkw == ph)
+            pkw = NULL;
+        else {
             free(pkw);
             pkw = NULL;
         }
     }
-    if(ph != NULL){
+    if (ph != NULL) {
         free(ph);
         ph = NULL;
     }
-    if(pe != NULL){
+    if (pe != NULL) {
         free(pe);
         pe = NULL;
     }
-    if(str != NULL){
+    if (str != NULL) {
         free(str);
         str = NULL;
     }
-    if(fp != NULL){
+    if (fp != NULL) {
         fclose(fp);
         fp = NULL;
     }
@@ -982,26 +986,26 @@ int config_uart(int which)
     char *port_path, *sparity;
     char parity;
 
-    switch(which){
-        case 0:
-            port_path = (char*)malloc(strlen(UART0_PATH)+1);
-            strcpy(port_path, UART0_PATH);
-            for(i = 0; i < config_cnt; i++){
-                if(strcmp(config_t[i].name, CNAME_UART0RATE) == 0){
-                    sscanf(config_t[i].pvalue, "%d", &speed);
-                }else if(strcmp(config_t[i].name, CNAME_UART0PARITY) == 0){
-                    //fprintf(stderr, "%s\n", config_t[i].pvalue);
-                    sparity = config_t[i].pvalue;
-                }
+    switch (which) {
+    case 0:
+        port_path = (char*)malloc(strlen(UART0_PATH) + 1);
+        strcpy(port_path, UART0_PATH);
+        for (i = 0; i < config_cnt; i++) {
+            if (strcmp(config_t[i].name, CNAME_UART0RATE) == 0) {
+                sscanf(config_t[i].pvalue, "%d", &speed);
+            } else if (strcmp(config_t[i].name, CNAME_UART0PARITY) == 0) {
+                //fprintf(stderr, "%s\n", config_t[i].pvalue);
+                sparity = config_t[i].pvalue;
             }
-            break;
+        }
+        break;
     }
 
-    if((strcmp("even", sparity) == 0) || (strcmp("EVEN", sparity) == 0) || (strcmp("Even", sparity) == 0)){
+    if ((strcmp("even", sparity) == 0) || (strcmp("EVEN", sparity) == 0) || (strcmp("Even", sparity) == 0)) {
         parity = 'e';
-    }else if((strcmp("odd", sparity) == 0) || (strcmp("ODD", sparity) == 0) || (strcmp("Odd", sparity) == 0)){
+    } else if ((strcmp("odd", sparity) == 0) || (strcmp("ODD", sparity) == 0) || (strcmp("Odd", sparity) == 0)) {
         parity = 'o';
-    }else{
+    } else {
         parity = 'n';
     }
 
@@ -1010,7 +1014,7 @@ int config_uart(int which)
 #endif
 #if ON_BOARD
     fd = uart_open(port_path);
-    if(0 == fd){
+    if (0 == fd) {
         fprintf(stderr, "%s:uart open failed\n", __func__);
         fd = -1;
         rval = 1;
@@ -1018,16 +1022,16 @@ int config_uart(int which)
     }
 
     rval = set_uart(fd, speed, 0, 8, 1, parity);
-    if(rval){
+    if (rval) {
         rval = 2;
         goto func_exit;
-    }else{
+    } else {
         fprintf(stderr, "%s:config uart success\n", __func__);
     }
 #endif
 
 func_exit:
-    if(fd != -1){
+    if (fd != -1) {
         uart_close(fd);
     }
     return rval;
@@ -1042,28 +1046,30 @@ func_exit:
  *      0:          failure
  *      other:      value of file descriptor
  */
-int uart_open(const char *port_path)
+int uart_open(const char* port_path)
 {
     int rval = 0;
     int fd;
 
     fd = open(port_path, O_RDWR | O_NOCTTY | O_NDELAY);
     //fd = open(port_path, O_RDWR);
-    if(-1 == fd){
+    if (-1 == fd) {
         fprintf(stderr, "%s:open file failed\n", __func__);
         rval = 1;
         goto func_exit;
     }
 
-    if(fcntl(fd, F_SETFL, 0) < 0){
+    if (fcntl(fd, F_SETFL, 0) < 0) {
         fprintf(stderr, "%s:fcntl failed\n", __func__);
         rval = 2;
         goto func_exit;
     }
 
 func_exit:
-    if(rval) return 0;
-    else return fd;
+    if (rval)
+        return 0;
+    else
+        return fd;
 }
 
 void uart_close(int fd)
@@ -1089,33 +1095,32 @@ int set_uart(int fd, int speed, int flow_ctrl, int databits, int stopbits, char 
 {
     int rval = 0;
     int i;
-    int speed_arr[] = {B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300};
+    int speed_arr[] = { B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300 };
 
     struct termios options;
 
-    if(tcgetattr(fd, &options) != 0){
+    if (tcgetattr(fd, &options) != 0) {
         rval = 1;
         fprintf(stderr, "%s:tcgetattr failed\n", __func__);
         goto func_exit;
     }
 
-    for(i = 0; i < (int)(sizeof(speed_arr)/sizeof(int)); i++)
-    {
-        if(speed == name_arr[i]){
+    for (i = 0; i < (int)(sizeof(speed_arr) / sizeof(int)); i++) {
+        if (speed == name_arr[i]) {
             //fprintf(stderr, "%s:speed is %d\n", __func__, speed);
             rval = cfsetispeed(&options, speed_arr[i]);
-            if(rval == -1){
+            if (rval == -1) {
                 fprintf(stderr, "%s:cfsetispeed falied\n", __func__);
             }
             rval = cfsetospeed(&options, speed_arr[i]);
-            if(rval == -1){
+            if (rval == -1) {
                 fprintf(stderr, "%s:cfsetispeed falied\n", __func__);
             }
-            
+
             break;
         }
     }
-    if(i >= (int)(sizeof(speed_arr)/sizeof(int))){
+    if (i >= (int)(sizeof(speed_arr) / sizeof(int))) {
         fprintf(stderr, "%s:input speed error\n", __func__);
         rval = 2;
         goto func_exit;
@@ -1130,14 +1135,13 @@ int set_uart(int fd, int speed, int flow_ctrl, int databits, int stopbits, char 
     options.c_cflag |= CLOCAL;
     options.c_cflag |= CREAD;
 
-    switch(flow_ctrl)
-    {
-        case 0:
-            options.c_cflag &= ~CRTSCTS;
-            break;
-        case 1:
-            options.c_cflag |= CRTSCTS;
-            break;
+    switch (flow_ctrl) {
+    case 0:
+        options.c_cflag &= ~CRTSCTS;
+        break;
+    case 1:
+        options.c_cflag |= CRTSCTS;
+        break;
         /*
         case 2:
             options.c_iflag |= IXON | IXOFF | IXANY;
@@ -1146,62 +1150,59 @@ int set_uart(int fd, int speed, int flow_ctrl, int databits, int stopbits, char 
     }
 
     options.c_cflag &= ~CSIZE;
-    switch(databits)
-    {
-        case 5:
-            options.c_cflag |= CS5;
-            break;
-        case 6:
-            options.c_cflag |= CS6;
-            break;
-        case 7:
-            options.c_cflag |= CS7;
-            break;
-        case 8:
-            options.c_cflag |= CS8;
-            break;
-        default:
-            fprintf(stderr, "%s:Unsupported data size\n", __func__);
-            rval = 2;
-            goto func_exit;
+    switch (databits) {
+    case 5:
+        options.c_cflag |= CS5;
+        break;
+    case 6:
+        options.c_cflag |= CS6;
+        break;
+    case 7:
+        options.c_cflag |= CS7;
+        break;
+    case 8:
+        options.c_cflag |= CS8;
+        break;
+    default:
+        fprintf(stderr, "%s:Unsupported data size\n", __func__);
+        rval = 2;
+        goto func_exit;
     }
 
-    switch(parity)
-    {
-        case 'n':
-        case 'N':
-            options.c_cflag &= ~PARENB;
-            options.c_iflag &= ~INPCK;
-            break;
-        case 'o':
-        case 'O':
-            options.c_cflag |= (PARODD | PARENB);
-            options.c_iflag |= (INPCK | ISTRIP);
-            break;
-        case 'e':
-        case 'E':
-            options.c_cflag |= PARENB;
-            options.c_cflag &= ~PARODD;
-            options.c_iflag |= (INPCK | ISTRIP);
-            break;
-        default:
-            fprintf(stderr, "%s:Unsupported parity\n", __func__);
-            rval = 3;
-            goto func_exit;
+    switch (parity) {
+    case 'n':
+    case 'N':
+        options.c_cflag &= ~PARENB;
+        options.c_iflag &= ~INPCK;
+        break;
+    case 'o':
+    case 'O':
+        options.c_cflag |= (PARODD | PARENB);
+        options.c_iflag |= (INPCK | ISTRIP);
+        break;
+    case 'e':
+    case 'E':
+        options.c_cflag |= PARENB;
+        options.c_cflag &= ~PARODD;
+        options.c_iflag |= (INPCK | ISTRIP);
+        break;
+    default:
+        fprintf(stderr, "%s:Unsupported parity\n", __func__);
+        rval = 3;
+        goto func_exit;
     }
 
-    switch(stopbits)
-    {
-        case 1:
-            options.c_cflag &= ~CSTOPB;
-            break;
-        case 2:
-            options.c_cflag |= CSTOPB;
-            break;
-        default:
-            fprintf(stderr, "%s:Unsupported stop bits\n", __func__);
-            rval = 4;
-            goto func_exit;
+    switch (stopbits) {
+    case 1:
+        options.c_cflag &= ~CSTOPB;
+        break;
+    case 2:
+        options.c_cflag |= CSTOPB;
+        break;
+    default:
+        fprintf(stderr, "%s:Unsupported stop bits\n", __func__);
+        rval = 4;
+        goto func_exit;
     }
 
     options.c_cflag &= ~(IXON | IXOFF | IXANY);
@@ -1209,7 +1210,6 @@ int set_uart(int fd, int speed, int flow_ctrl, int databits, int stopbits, char 
     options.c_iflag &= ~(ONLCR | OCRNL);
     options.c_oflag &= ~(INLCR | IGNCR | ICRNL);
     options.c_oflag &= ~(ONLCR | OCRNL);
-
 
     options.c_oflag &= ~OPOST;
     options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
@@ -1220,7 +1220,7 @@ int set_uart(int fd, int speed, int flow_ctrl, int databits, int stopbits, char 
     //clean input and output buffer
     tcflush(fd, TCIFLUSH);
 
-    if(tcsetattr(fd, TCSANOW, &options) != 0){
+    if (tcsetattr(fd, TCSANOW, &options) != 0) {
         fprintf(stderr, "%s:com set error\n", __func__);
         rval = 5;
         goto func_exit;
@@ -1237,11 +1237,12 @@ int ad9361_write(int addr, int data)
     int rval = 0;
     int fd;
 
-    for(i = 1; i < 100; i++){
+    for (i = 1; i < 100; i++) {
         rd_data = drvFPGA_Read(ADDR_9361_SPI_BUSY);
-        if(!(rd_data & 0x100)) break;
+        if (!(rd_data & 0x100))
+            break;
     }
-    drvFPGA_Write(AD9361_BASE_ADDR + (addr<<2), (data & 0xFF));
+    drvFPGA_Write(AD9361_BASE_ADDR + (addr << 2), (data & 0xFF));
 
 func_exit:
     return rval;
@@ -1268,35 +1269,33 @@ int drvFPGA_Write(int io_addr, int io_data)
     return 0;
 }
 
-int drvFPGA_Init(int *p_fd)
+int drvFPGA_Init(int* p_fd)
 {
     int fd = 0;
 
     fd = open(DEVNAME, O_RDWR | O_SYNC);
-    if(fd < 0){
+    if (fd < 0) {
         fprintf(stderr, "%s:can not open /dev/mem\n", __func__);
         return 1;
     }
 
-
     g_FPGA_pntr = mmap(0, 65536, PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, fd, FPGA_ADDR_BASE);
-    if(g_FPGA_pntr == NULL){
+    if (g_FPGA_pntr == NULL) {
         fprintf(stderr, "%s,%d:can not open mmap\n", __func__, __LINE__);
         close(fd);
         return 2;
-    }
-    else if(g_FPGA_pntr == (void*)-1){
+    } else if (g_FPGA_pntr == (void*)-1) {
         fprintf(stderr, "%s,%d:can not open mmap\n", __func__, __LINE__);
         close(fd);
         return 3;
     }
-    
+
     //fprintf(stderr, "%s, %d:g_FPGA_pntr = 0x%x\n", __func__, __LINE__, g_FPGA_pntr);
     *p_fd = fd;
     return 0;
 }
 
-int drvFPGA_Close(int *p_fd)
+int drvFPGA_Close(int* p_fd)
 {
     int fd = *p_fd;
 
@@ -1315,33 +1314,33 @@ void del_route(int index)
     char buf[128];
 
     sprintf(buf, "staticRoute%dNetwork", index);
-    for(i = 0; i < config_cnt; i++){
-        if(strcmp(config_t[i].name, buf) == 0){
+    for (i = 0; i < config_cnt; i++) {
+        if (strcmp(config_t[i].name, buf) == 0) {
             onet = config_t[i].pvalue;
             break;
         }
     }
-    if(onet == NULL){
+    if (onet == NULL) {
         fprintf(stderr, "%s:onet is NULL\n", __func__);
         goto func_exit;
     }
 
-    if(ipisnull(onet)){
+    if (ipisnull(onet)) {
         sprintf(buf, "staticRoute%dGateWay", index);
-        for(i = 0; i < config_cnt; i++){
-            if(strcmp(config_t[i].name, buf) == 0){
+        for (i = 0; i < config_cnt; i++) {
+            if (strcmp(config_t[i].name, buf) == 0) {
                 ogate = config_t[i].pvalue;
                 break;
             }
         }
-        if(ogate == NULL){
+        if (ogate == NULL) {
             fprintf(stderr, "%s:ogate is NULL\n", __func__);
             goto func_exit;
         }
 
-        if(ipisnull(ogate)){
+        if (ipisnull(ogate)) {
             goto func_exit;
-        }else{
+        } else {
             sprintf(buf, "route del -net %s gw %s", onet, ogate);
 #if PRINT_COMMAND
             fprintf(stderr, "%s\n", buf);
@@ -1351,22 +1350,22 @@ void del_route(int index)
 #endif
         }
 
-    }else if(ipishost(onet)){
+    } else if (ipishost(onet)) {
         sprintf(buf, "staticRoute%dGateWay", index);
-        for(i = 0; i < config_cnt; i++){
-            if(strcmp(config_t[i].name, buf) == 0){
+        for (i = 0; i < config_cnt; i++) {
+            if (strcmp(config_t[i].name, buf) == 0) {
                 ogate = config_t[i].pvalue;
                 break;
             }
         }
-        if(ogate == NULL){
+        if (ogate == NULL) {
             fprintf(stderr, "%s:ogate is NULL\n", __func__);
             goto func_exit;
         }
 
-        if(ipisnull(ogate)){
+        if (ipisnull(ogate)) {
             goto func_exit;
-        }else{
+        } else {
             sprintf(buf, "route del -host %s", onet);
 #if PRINT_COMMAND
             fprintf(stderr, "%s\n", buf);
@@ -1375,22 +1374,22 @@ void del_route(int index)
             system(buf);
 #endif
         }
-    }else{
+    } else {
         sprintf(buf, "staticRoute%dSubMask", index);
-        for(i = 0; i < config_cnt; i++){
-            if(strcmp(config_t[i].name, buf) == 0){
+        for (i = 0; i < config_cnt; i++) {
+            if (strcmp(config_t[i].name, buf) == 0) {
                 omask = config_t[i].pvalue;
                 break;
             }
         }
-        if(omask == NULL){
+        if (omask == NULL) {
             fprintf(stderr, "%s:omask is NULL\n", __func__);
             goto func_exit;
         }
 
-        if(ipisnull(omask)){
+        if (ipisnull(omask)) {
             goto func_exit;
-        }else{
+        } else {
             sprintf(buf, "route del -net %s netmask %s", onet, omask);
 #if PRINT_COMMAND
             fprintf(stderr, "%s\n", buf);
@@ -1402,14 +1401,14 @@ void del_route(int index)
     }
 
 func_exit:
-    return ;
+    return;
 }
 
 void config_route(int which)
 {
-    char *onet = NULL;
-    char *omask = NULL;
-    char *ogate = NULL;
+    char* onet = NULL;
+    char* omask = NULL;
+    char* ogate = NULL;
     int i;
     char cmd[128];
     char nbuf[32], mbuf[32], gbuf[32];
@@ -1417,32 +1416,32 @@ void config_route(int which)
     sprintf(nbuf, "staticRoute%dNetwork", which);
     sprintf(mbuf, "staticRoute%dSubMask", which);
     sprintf(gbuf, "staticRoute%dGateWay", which);
-    for(i = 0; i < config_cnt; i++){
-        if(strcmp(config_t[i].name, nbuf) == 0){
+    for (i = 0; i < config_cnt; i++) {
+        if (strcmp(config_t[i].name, nbuf) == 0) {
             onet = config_t[i].pvalue;
-        }else if(strcmp(config_t[i].name, mbuf) == 0){
+        } else if (strcmp(config_t[i].name, mbuf) == 0) {
             omask = config_t[i].pvalue;
-        }else if(strcmp(config_t[i].name, gbuf) == 0){
+        } else if (strcmp(config_t[i].name, gbuf) == 0) {
             ogate = config_t[i].pvalue;
         }
     }
-    if(onet == NULL){
+    if (onet == NULL) {
         fprintf(stderr, "%s:onet is NULL\n", __func__);
         goto func_exit;
     }
-    if(omask == NULL){
+    if (omask == NULL) {
         fprintf(stderr, "%s:omask is NULL\n", __func__);
         goto func_exit;
     }
-    if(ogate == NULL){
+    if (ogate == NULL) {
         fprintf(stderr, "%s:ogate is NULL\n", __func__);
         goto func_exit;
     }
 
-    if(ipisnull(onet)){
-        if(ipisnull(ogate)){
+    if (ipisnull(onet)) {
+        if (ipisnull(ogate)) {
             goto func_exit;
-        }else{
+        } else {
             sprintf(cmd, "route add -net %s gw %s", onet, ogate);
 #if PRINT_COMMAND
             fprintf(stderr, "%s\n", cmd);
@@ -1451,10 +1450,10 @@ void config_route(int which)
             system(cmd);
 #endif
         }
-    }else if(ipishost(onet)){           //ipaddress is host
-        if(ipisnull(ogate)){
+    } else if (ipishost(onet)) { //ipaddress is host
+        if (ipisnull(ogate)) {
             goto func_exit;
-        }else{
+        } else {
             sprintf(cmd, "route add -host %s gw %s", onet, ogate);
 #if PRINT_COMMAND
             fprintf(stderr, "%s\n", cmd);
@@ -1463,13 +1462,13 @@ void config_route(int which)
             system(cmd);
 #endif
         }
-    }else{                              //ipaddress is network
-        if(ipisnull(omask)){
+    } else { //ipaddress is network
+        if (ipisnull(omask)) {
             goto func_exit;
-        }else{
-            if(ipisnull(ogate)){
+        } else {
+            if (ipisnull(ogate)) {
                 goto func_exit;
-            }else{
+            } else {
                 sprintf(cmd, "route add -net %s netmask %s gw %s", onet, omask, ogate);
 #if PRINT_COMMAND
                 fprintf(stderr, "%s\n", cmd);
@@ -1482,29 +1481,29 @@ void config_route(int which)
     }
 
 func_exit:
-    return ;
+    return;
 }
 
-int readvaluefromfile(const char *path, int *value)
+int readvaluefromfile(const char* path, int* value)
 {
     int rval = 0;
-    FILE *fp = NULL;
+    FILE* fp = NULL;
     char buf[128];
 
     fp = fopen(path, "r");
-    if (fp == NULL){
+    if (fp == NULL) {
         rval = 1;
         perror("fopen");
         goto func_exit;
     }
-    if(NULL == fgets(buf, 128, fp)){
+    if (NULL == fgets(buf, 128, fp)) {
         rval = 2;
         goto func_exit;
     }
     sscanf(buf, "%d", value);
 
 func_exit:
-    if (fp != NULL){
+    if (fp != NULL) {
         fclose(fp);
     }
     return rval;
