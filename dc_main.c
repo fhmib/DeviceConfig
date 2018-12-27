@@ -4,6 +4,9 @@
 U8 sa;
 pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
 
+//for server socket
+char ser_flag = 0;
+
 int mn_qid = -1;
 int dc_qid = -1;
 
@@ -1315,142 +1318,162 @@ void* rcv_thread(void* arg)
     smsg_t* pm = NULL;
     fd_set rset, std_rset;
     char node_ip[16];
+    struct timeval tm;
 
     pthread_detach(pthread_self());
 
-    for (i = 0; i < status_cnt; i++) {
-        if (strcmp(status_data[i].name, CNAME_IPADDRESS) == 0) {
-            (*status_data[i].pfunc)(i, 0, NULL);
-            if (status_data[i].pvalue == NULL) {
-                rval = 10;
-                fprintf(stderr, "%s:ip pvalue is NULL\n", __func__);
-                goto thread_exit;
-            } else {
-                strcpy(node_ip, status_data[i].pvalue);
-                fprintf(stderr, "node_ip:%s\n", node_ip);
-            }
-        }
-    }
-
-    //create request socket
-    reqfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (reqfd < 0) {
-        perror("create request socket failed");
-        rval = 1;
-        goto thread_exit;
-    }
-    //create information socket
-    infofd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (infofd < 0) {
-        perror("create information socket failed");
-        rval = 1;
-        goto thread_exit;
-    }
-
-    //join multicast group
-    if (inet_pton(AF_INET, GROUP_IP, &mreq.imr_multiaddr.s_addr) <= 0) {
-        fprintf(stderr, "Wrong IP address\n");
-        rval = 2;
-        goto thread_exit;
-    }
-    if (inet_pton(AF_INET, node_ip, &mreq.imr_interface.s_addr) <= 0) {
-        fprintf(stderr, "Wrong IP address\n");
-        rval = 2;
-        goto thread_exit;
-    }
-    //mreq.imr_interface.s_addr = INADDR_ANY;
-    setsockopt(reqfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(struct ip_mreq));
-
-    //fill socket address variable
-    mserv.sin_family = AF_INET;
-    mserv.sin_port = htons(MUL_PORT);
-    if (inet_pton(AF_INET, GROUP_IP, &mserv.sin_addr) <= 0) {
-        fprintf(stderr, "Wrong IP address\n");
-        rval = 2;
-        goto thread_exit;
-    }
-
-    userv.sin_family = AF_INET;
-    userv.sin_port = htons(INFO_PORT);
-    //fprintf(stderr, "node_ip:%s\n", node_ip);
-    if (inet_pton(AF_INET, node_ip, &userv.sin_addr) <= 0) {
-        fprintf(stderr, "Wrong IP address\n");
-        rval = 2;
-        goto thread_exit;
-    }
-
-    //bind socket
-    if (bind(reqfd, (struct sockaddr*)&mserv, sizeof(struct sockaddr)) < 0) {
-        perror("bind reqfd failed");
-        rval = 3;
-        goto thread_exit;
-    }
-    //sleep(1);
-    if (bind(infofd, (struct sockaddr*)&userv, sizeof(struct sockaddr)) < 0) {
-        perror("bind infofd failed");
-        rval = 3;
-        goto thread_exit;
-    }
-
-    sock_len = sizeof(struct sockaddr);
-    pm = (smsg_t*)malloc(SMSG_LEN);
-
-    FD_ZERO(&std_rset);
-    FD_SET(reqfd, &std_rset);
-    FD_SET(infofd, &std_rset);
-
     while (1) {
-        memcpy(&rset, &std_rset, sizeof(fd_set));
-
-        if (select(MMAX(infofd, reqfd) + 1, &rset, NULL, NULL, NULL) < 0) {
-            perror("select");
-            continue;
-        }
-
-        if (FD_ISSET(reqfd, &rset)) {
-            recvfrom(reqfd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
-            if (pm->type == SMSG_REQ) {
-                if (pm->node == sa) {
-                    fprintf(stderr, "recv a requst msg from myself, node %d, drop it\n", pm->node);
-                    continue;
-                }
-
-                fprintf(stderr, "recv a requst msg from node %d\n", pm->node);
-                pthread_mutex_lock(&pmutex);
-                update_local_status();
-                gen_json(STATUS_PATH, status_root);
-                rval = send_info(reqfd, &cli);
-                if (rval != 0) {
-                    fprintf(stderr, "send info failed\n");
-                }
-                pthread_mutex_unlock(&pmutex);
-            }
-        }
-        if (FD_ISSET(infofd, &rset)) {
-            recvfrom(infofd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
-            if (pm->type == SMSG_INFO) {
-                if (pm->node == sa) {
-                    fprintf(stderr, "recv an info msg from myself, node %d, drop it\n", pm->node);
-                    continue;
-                }
-                fprintf(stderr, "recv an info msg from node %d\n", pm->node);
-                //printf("msg:[%s]\n", pm->buf);
-                pthread_mutex_lock(&pmutex);
-
-                rval = update_node_status(pm->node, pm->buf);
-                // if(rval){
-                //     update_time(pm->node, 0);
-                // }else{
-                //     update_time(pm->node, 15);
-                // }
-                if (rval) {
-                    fprintf(stderr, "%s,%d:update_node_status failed, rval = %d\n", __func__, __LINE__, rval);
+        for (i = 0; i < status_cnt; i++) {
+            if (strcmp(status_data[i].name, CNAME_IPADDRESS) == 0) {
+                (*status_data[i].pfunc)(i, 0, NULL);
+                if (status_data[i].pvalue == NULL) {
+                    rval = 10;
+                    fprintf(stderr, "%s:ip pvalue is NULL\n", __func__);
+                    goto thread_exit;
                 } else {
-                    gen_json(STATUS_PATH, status_root);
+                    strcpy(node_ip, status_data[i].pvalue);
+                    fprintf(stderr, "node_ip:%s\n", node_ip);
                 }
-                pthread_mutex_unlock(&pmutex);
             }
         }
+
+        //create request socket
+        reqfd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (reqfd < 0) {
+            perror("create request socket failed");
+            rval = 1;
+            goto thread_exit;
+        }
+        //create information socket
+        infofd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (infofd < 0) {
+            perror("create information socket failed");
+            rval = 1;
+            goto thread_exit;
+        }
+
+        //join multicast group
+        if (inet_pton(AF_INET, GROUP_IP, &mreq.imr_multiaddr.s_addr) <= 0) {
+            fprintf(stderr, "Wrong IP address\n");
+            rval = 2;
+            goto thread_exit;
+        }
+        if (inet_pton(AF_INET, node_ip, &mreq.imr_interface.s_addr) <= 0) {
+            fprintf(stderr, "Wrong IP address\n");
+            rval = 2;
+            goto thread_exit;
+        }
+        //mreq.imr_interface.s_addr = INADDR_ANY;
+        rval = setsockopt(reqfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(struct ip_mreq));
+        if(rval < 0){
+            perror("setsockopt");
+            rval = 2;
+            goto thread_exit;
+        }
+
+        //fill socket address variable
+        mserv.sin_family = AF_INET;
+        mserv.sin_port = htons(MUL_PORT);
+        if (inet_pton(AF_INET, GROUP_IP, &mserv.sin_addr) <= 0) {
+            fprintf(stderr, "Wrong IP address\n");
+            rval = 2;
+            goto thread_exit;
+        }
+
+        userv.sin_family = AF_INET;
+        userv.sin_port = htons(INFO_PORT);
+        //fprintf(stderr, "node_ip:%s\n", node_ip);
+        if (inet_pton(AF_INET, node_ip, &userv.sin_addr) <= 0) {
+            fprintf(stderr, "Wrong IP address\n");
+            rval = 2;
+            goto thread_exit;
+        }
+
+        //bind socket
+        if (bind(reqfd, (struct sockaddr*)&mserv, sizeof(struct sockaddr)) < 0) {
+            perror("bind reqfd failed");
+            rval = 3;
+            goto thread_exit;
+        }
+        //sleep(1);
+        if (bind(infofd, (struct sockaddr*)&userv, sizeof(struct sockaddr)) < 0) {
+            perror("bind infofd failed");
+            rval = 3;
+            goto thread_exit;
+        }
+
+        sock_len = sizeof(struct sockaddr);
+        pm = (smsg_t*)malloc(SMSG_LEN);
+
+        FD_ZERO(&std_rset);
+        FD_SET(reqfd, &std_rset);
+        FD_SET(infofd, &std_rset);
+
+        ser_flag = 0;
+
+        while (!ser_flag) {
+            memcpy(&rset, &std_rset, sizeof(fd_set));
+            tm.tv_sec = 2;
+            tm.tv_usec = 0;
+
+            if (select(MMAX(infofd, reqfd) + 1, &rset, NULL, NULL, &tm) < 0) {
+                perror("select");
+                if (errno == EINTR)
+                    continue;
+                else
+                    exit(1);
+            }
+
+            if (FD_ISSET(reqfd, &rset)) {
+                recvfrom(reqfd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
+                if (pm->type == SMSG_REQ) {
+                    if (pm->node == sa) {
+                        fprintf(stderr, "recv a requst msg from myself, node %d, drop it\n", pm->node);
+                        continue;
+                    }
+
+                    fprintf(stderr, "recv a requst msg from node %d\n", pm->node);
+                    pthread_mutex_lock(&pmutex);
+                    update_local_status();
+                    gen_json(STATUS_PATH, status_root);
+                    rval = send_info(reqfd, &cli);
+                    if (rval != 0) {
+                        fprintf(stderr, "send info failed\n");
+                    }
+                    pthread_mutex_unlock(&pmutex);
+                }
+            }
+            if (FD_ISSET(infofd, &rset)) {
+                recvfrom(infofd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
+                if (pm->type == SMSG_INFO) {
+                    if (pm->node == sa) {
+                        fprintf(stderr, "recv an info msg from myself, node %d, drop it\n", pm->node);
+                        continue;
+                    }
+                    fprintf(stderr, "recv an info msg from node %d\n", pm->node);
+                    //printf("msg:[%s]\n", pm->buf);
+                    pthread_mutex_lock(&pmutex);
+
+                    rval = update_node_status(pm->node, pm->buf);
+                    // if(rval){
+                    //     update_time(pm->node, 0);
+                    // }else{
+                    //     update_time(pm->node, 15);
+                    // }
+                    if (rval) {
+                        fprintf(stderr, "%s,%d:update_node_status failed, rval = %d\n", __func__, __LINE__, rval);
+                    } else {
+                        gen_json(STATUS_PATH, status_root);
+                    }
+                    pthread_mutex_unlock(&pmutex);
+                }
+            }
+        }
+        fprintf(stderr, "%s: restarting server socket\n", __func__);
+        close(reqfd);
+        reqfd = -1;
+        close(infofd);
+        infofd = -1;
     }
 
 thread_exit:

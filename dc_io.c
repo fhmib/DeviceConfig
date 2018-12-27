@@ -2,6 +2,7 @@
 
 extern pthread_mutex_t pmutex;
 extern U8 sa;
+extern char ser_flag;
 
 extern int mn_qid, dc_qid;
 
@@ -247,8 +248,10 @@ func_exit:
 int io_ipAddress(int index, char mode, char* pvalue)
 {
     int rval = 0;
+    int i;
     char buf[16];
     char wbuf[64];
+    char* paudio;
     struct ifaddrs *ifaddr, *ifa;
     struct sockaddr_in* ifinfo;
 
@@ -272,6 +275,41 @@ int io_ipAddress(int index, char mode, char* pvalue)
         freeifaddrs(ifaddr);
     } else {
         sprintf(wbuf, "ifconfig " NET_DEV_NAME " %s", pvalue);
+
+        // system(wbuf);
+#if PRINT_COMMAND
+        fprintf(stderr, "%s\n", wbuf);
+#endif
+#if ON_BOARD
+        system(wbuf);
+#endif
+        //tell service thread to rebind socket.
+        ser_flag = 1;
+
+        //modify init.sh.
+        modify_file(XD_INIT_PATH, "ifconfig br0 \"", "\"", "\"", pvalue);
+
+        for (i = 0; i < config_cnt; i++) {
+            if (strcmp(config_t[i].name, CNAME_AUDIOENABLE) == 0) {
+                paudio = config_t[i].pvalue;
+                break;
+            }
+        }
+        if (mode == 2) {
+            if (paudio != NULL) {
+                if (strcmp(paudio, "0") != 0) {
+                    sprintf(buf, "0");
+                    io_audioEnable(i, 2, buf);
+                    sprintf(buf, "1");
+                    io_audioEnable(i, 2, buf);
+                }
+            }
+        }
+
+        //add group ip to route table.
+        sprintf(wbuf, "route add -net " GROUP_IP " netmask 255.255.255.255 " NET_DEV_NAME);
+
+        // system(wbuf);
 #if PRINT_COMMAND
         fprintf(stderr, "%s\n", wbuf);
 #endif
@@ -586,7 +624,7 @@ int io_audioEnable(int index, char mode, char* pvalue)
         sscanf(pvalue, "%d", &value);
         if (value != 0) {
             sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
-            usleep(100000);
+            // usleep(100000);
 
 #if PRINT_COMMAND
             fprintf(stderr, "%s\n", buf);
@@ -609,7 +647,7 @@ int io_audioEnable(int index, char mode, char* pvalue)
         sscanf(pvalue, "%d", &value);
         if (value != 0) {
             sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
-            usleep(100000);
+            // usleep(100000);
 
 #if PRINT_COMMAND
             fprintf(stderr, "%s\n", buf);

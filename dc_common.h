@@ -72,7 +72,7 @@
 
 #define MAX_SOCK_LEN                8192
 #define MAX_MSG_LEN                 8192
-#define MUL_PORT                    9001
+#define MUL_PORT                    9000
 #define INFO_PORT                   9001
 #define NAME_LEN                    64
 #define MAX_NODE_CNT                32
