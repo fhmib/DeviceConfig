@@ -125,9 +125,9 @@ sdata_s config_t[] = {
     { JSON_NORMAL, CNAME_DATAPORT, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_UART0RATE, NULL, &io_dataRate, CNAME_DATAPORT, 1 },
     { JSON_STRING, CNAME_UART0PARITY, NULL, &io_dataParity, CNAME_DATAPORT, 1 },
-    //{JSON_STRING, "data0StopBits", NULL, NULL, CNAME_DATAPORT, 1},
+    { JSON_STRING, CNAME_UART0DATAWIDTH, NULL, &io_dataWidth, CNAME_DATAPORT, 1 },
+    { JSON_STRING, CNAME_UART0STOP, NULL, &io_stopBit, CNAME_DATAPORT, 1 },
     //{JSON_STRING, "data0FlowControl", NULL, NULL, CNAME_DATAPORT, 1},
-    //{JSON_STRING, "data0Width", NULL, NULL, CNAME_DATAPORT, 1},
     { JSON_NORMAL, CNAME_ROUTE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_NORMAL, CNAME_ROUTE0, NULL, NULL, CNAME_ROUTE, 1 },
     { JSON_STRING, CNAME_ROUTE0ADDR, NULL, &io_route, CNAME_ROUTE0, 1 },
@@ -406,7 +406,7 @@ int init_device()
         if (config_t[i].pfunc == NULL) {
             continue;
         } else {
-            //printf("%s: configuring %s, value = %s\n", __func__, config_t[i].name, config_t[i].pvalue);
+            printf("%s: configuring %s, value = %s\n", __func__, config_t[i].name, config_t[i].pvalue);
             times = 0;
             while (1) {
                 if (config_t[i].pvalue == NULL) {
@@ -1365,7 +1365,7 @@ void* rcv_thread(void* arg)
         }
         //mreq.imr_interface.s_addr = INADDR_ANY;
         rval = setsockopt(reqfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(struct ip_mreq));
-        if(rval < 0){
+        if (rval < 0) {
             perror("setsockopt");
             rval = 2;
             goto thread_exit;

@@ -36,6 +36,8 @@ int io_tfci(int, char, char*);
 int io_txPower(int, char, char*);
 int io_dataRate(int, char, char*);
 int io_dataParity(int, char, char*);
+int io_dataWidth(int, char, char*);
+int io_stopBit(int, char, char*);
 int io_route(int, char, char*);
 
 int io_audioEnable(int, char, char*);

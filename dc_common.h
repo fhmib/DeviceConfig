@@ -128,6 +128,8 @@
 #define CNAME_AUDIOALC              "audioMuteLevel"
 #define CNAME_UART0RATE             "data0BaudRate"
 #define CNAME_UART0PARITY           "data0Parity"
+#define CNAME_UART0DATAWIDTH        "data0DataWidth"
+#define CNAME_UART0STOP             "data0StopBit"
 #define CNAME_ROUTE0ADDR            "staticRoute0Network"
 #define CNAME_ROUTE1ADDR            "staticRoute1Network"
 #define CNAME_ROUTE2ADDR            "staticRoute2Network"

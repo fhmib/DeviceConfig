@@ -591,6 +591,53 @@ func_exit:
     return rval;
 }
 
+int io_dataWidth(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i, value;
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        //fprintf(stderr, "%s:%d\n", __func__, i);
+        sscanf(pvalue, "%d", &value);
+        if (value < 5 || value > 8) {
+            rval = 2;
+            goto func_exit;
+        }
+
+        i = getnumfromstr(config_t[index].name);
+        port_flag[i] = 1;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_stopBit(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i, value;
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        //fprintf(stderr, "%s:%d\n", __func__, i);
+        sscanf(pvalue, "%d", &value);
+        if (value < 0 || value > 2) {
+            rval = 2;
+            goto func_exit;
+        }
+        i = getnumfromstr(config_t[index].name);
+        port_flag[i] = 1;
+    }
+
+func_exit:
+    return rval;
+}
+
 int io_route(int index, char mode, char* pvalue)
 {
     int rval = 0;
@@ -1020,7 +1067,7 @@ int config_uart(int which)
     int rval = 0;
     int fd = -1;
     int i;
-    int speed;
+    int speed, dataw, stopb;
     char *port_path, *sparity;
     char parity;
 
@@ -1034,6 +1081,12 @@ int config_uart(int which)
             } else if (strcmp(config_t[i].name, CNAME_UART0PARITY) == 0) {
                 //fprintf(stderr, "%s\n", config_t[i].pvalue);
                 sparity = config_t[i].pvalue;
+            } else if (strcmp(config_t[i].name, CNAME_UART0DATAWIDTH) == 0) {
+                //fprintf(stderr, "%s\n", config_t[i].pvalue);
+                sscanf(config_t[i].pvalue, "%d", &dataw);
+            } else if (strcmp(config_t[i].name, CNAME_UART0STOP) == 0) {
+                //fprintf(stderr, "%s\n", config_t[i].pvalue);
+                sscanf(config_t[i].pvalue, "%d", &stopb);
             }
         }
         break;
@@ -1048,7 +1101,7 @@ int config_uart(int which)
     }
 
 #if PRINT_COMMAND
-    fprintf(stderr, "%s: port_path=%s, which=%d, speed=%d, parity=%c\n", __func__, port_path, which, speed, parity);
+    fprintf(stderr, "%s: port_path=%s, which=%d, speed=%d, parity=%c, dataWidth=%d, stopBit=%d\n", __func__, port_path, which, speed, parity, dataw, stopb);
 #endif
 #if ON_BOARD
     fd = uart_open(port_path);
@@ -1059,7 +1112,7 @@ int config_uart(int which)
         goto func_exit;
     }
 
-    rval = set_uart(fd, speed, 0, 8, 1, parity);
+    rval = set_uart(fd, speed, 0, dataw, stopb, parity);
     if (rval) {
         rval = 2;
         goto func_exit;

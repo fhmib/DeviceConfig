@@ -23,8 +23,10 @@
 		"audioMuteLevel": "20"
 	},
 	"dataPort": {
-		"data0BaudRate": "115200",
-		"data0Parity": "None"
+		"data0BaudRate": "9600",
+		"data0Parity": "None",
+		"data0DataWidth": "8",
+		"data0StopBit": "1"
 	},
 	"staticRoute": {
 		"staticRoute0": {
