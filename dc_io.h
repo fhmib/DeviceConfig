@@ -24,6 +24,20 @@ int io_ipRxByteCnt(int, char, char*);
 int io_ipRxPktCnt(int, char, char*);
 int io_ipRxErrorCnt(int, char, char*);
 
+int io_gpsUTCDate(int, char, char*);
+int io_gpsUTCTime(int, char, char*);
+int io_gpsSateCnt(int, char, char*);
+int io_gpsLatitude(int, char, char*);
+int io_gpsLatitudeHem(int, char, char*);
+int io_gpsLongitude(int, char, char*);
+int io_gpsLongitudeHem(int, char, char*);
+int io_gpsSpeed(int, char, char*);
+int io_gpsCourse(int, char, char*);
+int io_gpsHDOP(int, char, char*);
+int io_gpsVDOP(int, char, char*);
+int io_gpsHeight(int, char, char*);
+int io_gpsType(int, char, char*);
+
 int io_voltage(int, char, char*);
 int io_temperature(int, char, char*);
 int io_ipAddress(int, char, char*);
@@ -38,6 +52,7 @@ int io_dataRate(int, char, char*);
 int io_dataParity(int, char, char*);
 int io_dataWidth(int, char, char*);
 int io_stopBit(int, char, char*);
+int io_gpsEnable(int, char, char*);
 int io_route(int, char, char*);
 
 int io_audioEnable(int, char, char*);

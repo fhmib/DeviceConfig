@@ -28,6 +28,9 @@
 		"data0DataWidth": "8",
 		"data0StopBit": "1"
 	},
+	"gps": {
+		"gpsEnable": "1"
+	},
 	"staticRoute": {
 		"staticRoute0": {
 			"staticRoute0Network": "0.0.0.0",

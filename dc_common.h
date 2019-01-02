@@ -31,7 +31,7 @@
 #define U32                         unsigned int
 #define U64                         unsigned long long
 
-#define ON_BOARD                    0
+#define ON_BOARD                    1
 #define PRINT_COMMAND               1
 #define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
 
@@ -104,6 +104,7 @@
 #define CNAME_MAIN                  "main"
 #define CNAME_AUDIO                 "audio"
 #define CNAME_DATAPORT              "dataPort"
+#define CNAME_GPS                   "gps"
 #define CNAME_ROUTE                 "staticRoute"
 #define CNAME_ROUTE0                "staticRoute0"
 #define CNAME_ROUTE1                "staticRoute1"
@@ -130,6 +131,23 @@
 #define CNAME_UART0PARITY           "data0Parity"
 #define CNAME_UART0DATAWIDTH        "data0DataWidth"
 #define CNAME_UART0STOP             "data0StopBit"
+
+#define CNAME_GPSENABLE             "gpsEnable"
+#define CNAME_GPS                   "gps"
+#define CNAME_GPSUTCTIME            "UTCTime"
+#define CNAME_GPSUTCDATE            "UTCDate"
+#define CNAME_GPSSATECNT            "statelliteCount"
+#define CNAME_GPSLAT                "latitude"
+#define CNAME_GPSLATHEM             "latitudeHemisphere"
+#define CNAME_GPSLONG               "longitude"
+#define CNAME_GPSLONGHEM            "longitudeHemisphere"
+#define CNAME_GPSSPEED              "groundSpeed"
+#define CNAME_GPSCOURSE             "groundCourse"
+#define CNAME_GPSHDOP               "HDOP"
+#define CNAME_GPSVDOP               "VDOP"
+#define CNAME_GPSHEIGHT             "height"
+#define CNAME_GPSTYPE               "gpsType"
+
 #define CNAME_ROUTE0ADDR            "staticRoute0Network"
 #define CNAME_ROUTE1ADDR            "staticRoute1Network"
 #define CNAME_ROUTE2ADDR            "staticRoute2Network"
@@ -167,6 +185,8 @@
 //#define JSON_ARRAY                  2
 //#define JSON_STRING                 3
 //#define JSON_CUSTOM1                4
+
+typedef char pgps[32];
 
 typedef enum {
     JSON_BRACKET,
@@ -327,6 +347,7 @@ int send_info(int, void*);
 void update_time(int, int);
 int update_node_status(int, char*);
 int stat2tree(node_s*, sdata_s*);
+void* gps_thread(void*);
 
 int gen_json(const char*, node_s*);
 void first_tree(FILE*, int, node_s*);

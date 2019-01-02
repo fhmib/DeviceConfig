@@ -14,8 +14,6 @@ int dc_qid = -1;
 int mc_fd;
 struct sockaddr_in mc_addr;
 
-extern void* g_FPGA_pntr;
-
 //for status.json
 node_s* status_root;
 node_s* sflags;
@@ -58,6 +56,20 @@ sdata_s status_data[] = {
     { JSON_STRING, CNAME_IPRXBYTE, NULL, &io_ipRxByteCnt, CNAME_IPSTATUS, 1 },
     { JSON_STRING, CNAME_IPRXPKT, NULL, &io_ipRxPktCnt, CNAME_IPSTATUS, 1 },
     { JSON_STRING, CNAME_IPRXERR, NULL, &io_ipRxErrorCnt, CNAME_IPSTATUS, 1 },
+    { JSON_NORMAL, CNAME_GPS, NULL, NULL, CNAME_NOTDEF, 1 },
+    { JSON_STRING, CNAME_GPSUTCDATE, NULL, &io_gpsUTCDate, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSUTCTIME, NULL, &io_gpsUTCTime, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSSATECNT, NULL, &io_gpsSateCnt, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSLAT, NULL, &io_gpsLatitude, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSLATHEM, NULL, &io_gpsLatitudeHem, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSLONG, NULL, &io_gpsLongitude, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSLONGHEM, NULL, &io_gpsLongitudeHem, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSSPEED, NULL, &io_gpsSpeed, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSCOURSE, NULL, &io_gpsCourse, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSHDOP, NULL, &io_gpsHDOP, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSVDOP, NULL, &io_gpsVDOP, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSHEIGHT, NULL, &io_gpsHeight, CNAME_GPS, 1 },
+    { JSON_STRING, CNAME_GPSTYPE, NULL, &io_gpsType, CNAME_GPS, 1 },
 };
 int status_cnt = sizeof(status_data) / sizeof(status_data[0]);
 
@@ -128,6 +140,8 @@ sdata_s config_t[] = {
     { JSON_STRING, CNAME_UART0DATAWIDTH, NULL, &io_dataWidth, CNAME_DATAPORT, 1 },
     { JSON_STRING, CNAME_UART0STOP, NULL, &io_stopBit, CNAME_DATAPORT, 1 },
     //{JSON_STRING, "data0FlowControl", NULL, NULL, CNAME_DATAPORT, 1},
+    { JSON_NORMAL, CNAME_GPS, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_GPSENABLE, NULL, &io_gpsEnable, CNAME_GPS, 1 },
     { JSON_NORMAL, CNAME_ROUTE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_NORMAL, CNAME_ROUTE0, NULL, NULL, CNAME_ROUTE, 1 },
     { JSON_STRING, CNAME_ROUTE0ADDR, NULL, &io_route, CNAME_ROUTE0, 1 },
@@ -162,11 +176,21 @@ struct timeval now_tv = { 0, 0 };
 char port_flag[PORT_CNT] = { 0 };
 //for config route
 char route_flag[ROUTE_CNT] = { 0 };
+//for gps
+char gps_enable = 0;
+pthread_mutex_t gps_mutex = PTHREAD_MUTEX_INITIALIZER;
+pgps gprmc[20];
+pgps gpgga[20];
+pgps gpgll[20];
+pgps gpgsa[20];
+pgps gpgsv[20];
+
+extern void* g_FPGA_pntr;
 
 int main(int argc, char* argv[])
 {
     sigset_t t_set;
-    pthread_t tm_tid, rcv_tid;
+    pthread_t tm_tid, rcv_tid, gps_tid;
 
 #if 0
     if(argc < 2){
@@ -213,6 +237,7 @@ int main(int argc, char* argv[])
 
     pthread_create(&tm_tid, NULL, timer_thread, &t_set);
     pthread_create(&rcv_tid, NULL, rcv_thread, NULL);
+    pthread_create(&gps_tid, NULL, gps_thread, NULL);
 
     while (1) {
         sleep(10);
@@ -1176,7 +1201,7 @@ func_exit:
     return rval;
 }
 
-static int num;
+//static int num;
 /*
  * func:
  *      update local status
@@ -1187,6 +1212,7 @@ void update_local_status()
     int i;
 
     //do pfunc to update status_data
+    pthread_mutex_lock(&gps_mutex);
     for (i = 0; i < status_cnt; i++) {
         //fprintf(stderr, "%s,%d: papare to config %s\n", __func__, __LINE__, status_data[i].name);
         if (status_data[i].pfunc == NULL)
@@ -1195,6 +1221,7 @@ void update_local_status()
             (*status_data[i].pfunc)(i, 0, NULL);
         }
     }
+    pthread_mutex_unlock(&gps_mutex);
 
     // pn = snode_data[sa-1];
     // remove_status(sa-1);
@@ -1747,4 +1774,215 @@ int stat2tree(node_s* pn, sdata_s* sdata)
 
 func_exit:
     return rval;
+}
+
+void* gps_thread(void* arg)
+{
+    int rval = 0;
+    int ret, i, index, mode;
+    int fd = -1;
+    char buf[1024];
+    char* p;
+
+    pthread_detach(pthread_self());
+
+    while (1) {
+        if (gps_enable) {
+            //open file descriptor
+            fd = open(UART0_PATH, O_RDONLY);
+            if (fd < 0) {
+                perror("open uart");
+                goto thread_exit;
+            }
+        } else {
+            sleep(1);
+            continue;
+        }
+
+        while (gps_enable) {
+            //read gps information
+            ret = read(fd, buf, 1023);
+            if (ret < 0) {
+                perror("read");
+                sleep(1);
+                break;
+            } else if (ret == 0) {
+                fprintf(stderr, "%s,%d:error!ret = %d\n", __func__, __LINE__, ret);
+                continue;
+            }
+            buf[ret] = 0;
+            // fprintf(stderr, "%s: ret = %d\nbuf = %s\n\n", __func__, ret, buf);
+
+            i = 0;
+            index = 0;
+            p = buf;
+            mode = 0;
+            pthread_mutex_lock(&gps_mutex);
+            while (i < ret) {
+                if (buf[i] == ',' || buf[i] == '\r' || buf[i] == '\n' || buf[i] == '*') {
+                    if (i == 0) {
+                        i++;
+                        p = buf + i;
+                        continue;
+                    }
+                    //if gps value is NULL
+                    if ((buf[i - 1] == ',') || (buf[i - 1] == 0)) {
+                        i++;
+                        p = buf + i;
+                        if (mode != 0) {
+                            //if gps value is NULL, set global variable to 0.
+                            switch (mode) {
+                            case 1:
+                                *(char*)(gprmc[index]) = 0;
+                                break;
+                            case 2:
+                                *(char*)(gpgga[index]) = 0;
+                                break;
+                            case 3:
+                                *(char*)(gpgll[index]) = 0;
+                                break;
+                            case 4:
+                                *(char*)(gpgsa[index]) = 0;
+                                break;
+                            case 5:
+                                *(char*)(gpgsv[index]) = 0;
+                                break;
+                            }
+                            index++;
+                        }
+                        continue;
+                    } else {
+                        buf[i] = 0;
+
+                        if (strstr(p, "GPRMC") != NULL) {
+                            mode = 1;
+                            index = 0;
+                            i++;
+                            p = buf + i;
+                            continue;
+                        } else if (strstr(p, "GPGGA") != NULL) {
+                            mode = 2;
+                            index = 0;
+                            i++;
+                            p = buf + i;
+                            continue;
+                        } else if (strstr(p, "GPGLL") != NULL) {
+                            mode = 3;
+                            index = 0;
+                            i++;
+                            p = buf + i;
+                            continue;
+                        } else if (strstr(p, "GPGSA") != NULL) {
+                            mode = 4;
+                            index = 0;
+                            i++;
+                            p = buf + i;
+                            continue;
+                        } else if (strstr(p, "GPGSV") != NULL) {
+                            mode = 5;
+                            index = 0;
+                            i++;
+                            p = buf + i;
+                            continue;
+                        }
+
+                        switch (mode) {
+                        case 0:
+                            break;
+                        case 1:
+                            if (index > 20) {
+                                fprintf(stderr, "GPRMC stack overflow\n");
+                                break;
+                            }
+                            //printf("111:%s\n", p);
+                            strcpy(gprmc[index], p);
+                            index++;
+                            break;
+                        case 2:
+                            if (index > 20) {
+                                fprintf(stderr, "GPGGA stack overflow\n");
+                                break;
+                            }
+                            //printf("222:%s\n", p);
+                            strcpy(gpgga[index], p);
+                            index++;
+                            break;
+                        case 3:
+                            if (index > 20) {
+                                fprintf(stderr, "GPGLL stack overflow\n");
+                                break;
+                            }
+                            //printf("333:%s, index=%d\n", p, index);
+                            strcpy(gpgll[index], p);
+                            index++;
+                            break;
+                        case 4:
+                            if (index > 20) {
+                                fprintf(stderr, "GPGSA stack overflow\n");
+                                break;
+                            }
+                            //printf("444:%s\n", p);
+                            strcpy(gpgsa[index], p);
+                            index++;
+                            break;
+                        case 5:
+#if 0
+                            if (index > 20) {
+                                fprintf(stderr, "GPGSV stack overflow\n");
+                                break;
+                            }
+                            //printf("555:%s\n", p);
+                            strcpy(gpgsv[index], p);
+                            index++;
+#else
+                            mode = 0;
+                            index = 0;
+#endif
+                            break;
+                        default:
+                            break;
+                        }
+                        i++;
+                        p = buf + i;
+                    }
+                } else {
+                    i++;
+                }
+            }
+            pthread_mutex_unlock(&gps_mutex);
+
+#if 0
+            printf("GPRMC:\n");
+            for (i = 0; i < 20; i++) {
+                //printf("i = %d, %d\n", i, (*(char*)gprmc[i])&0x000000FF);
+                printf("i = %d, %s\n", i, gprmc[i]);
+            }
+            printf("GPGGA:\n");
+            for (i = 0; i < 20; i++) {
+                printf("i = %d, %s\n", i, gpgga[i]);
+            }
+            printf("GPGLL:\n");
+            for (i = 0; i < 20; i++) {
+                printf("i = %d, %s\n", i, gpgll[i]);
+            }
+            printf("GPGSA:\n");
+            for (i = 0; i < 20; i++) {
+                printf("i = %d, %s\n", i, gpgsa[i]);
+            }
+            /*
+            printf("GPGSV:\n");
+            for (i = 0; i < 20; i++) {
+                printf("i = %d, %s\n", i, gpgsv[i]);
+            }
+            */
+#endif
+        }
+
+        //close file descriptor
+        close(fd);
+        fd = -1;
+    }
+
+thread_exit:
+    pthread_exit((void*)&rval);
 }

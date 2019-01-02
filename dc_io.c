@@ -19,6 +19,13 @@ extern struct timeval now_tv, pre_tv;
 extern sdata_s config_t[];
 extern int config_cnt;
 
+extern char gps_enable;
+extern pgps gprmc[];
+extern pgps gpgga[];
+extern pgps gpgll[];
+extern pgps gpgsa[];
+extern pgps gpgsv[];
+
 char buf_capvol[] = "/home/bin/amixer cset numid=90,iface=MIXER,name='Capture Volume' ";
 char buf_playvol[] = "/home/bin/amixer cset numid=108,iface=MIXER,name='Lineout Playback Volume' ";
 char buf_alcvol[] = "/home/bin/amixer cset numid=102,iface=MIXER,name='ALC Capture Noise Gate Threshold Volume' ";
@@ -196,6 +203,253 @@ int io_ipRxErrorCnt(int index, char mode, char* pvalue)
     sprintf(buf, "%lld", rxerrors);
     modify_value(&status_data[index].pvalue, buf);
 
+    return rval;
+}
+
+int io_gpsUTCDate(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gprmc[8]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsUTCTime(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgga[0]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsSateCnt(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgga[6]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsLatitude(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgga[1]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsLatitudeHem(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgga[2]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsLongitude(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgga[3]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsLongitudeHem(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgga[4]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsSpeed(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gprmc[6]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsCourse(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gprmc[7]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsHDOP(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgsa[15]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsVDOP(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgsa[16]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsHeight(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgga[8]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsType(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        if (gps_enable) {
+            modify_value(&status_data[index].pvalue, gpgsa[1]);
+        } else {
+            modify_value(&status_data[index].pvalue, NULL);
+        }
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
     return rval;
 }
 
@@ -632,6 +886,27 @@ int io_stopBit(int index, char mode, char* pvalue)
         }
         i = getnumfromstr(config_t[index].name);
         port_flag[i] = 1;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_gpsEnable(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int value;
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        sscanf(pvalue, "%d", &value);
+        if (value > 0) {
+            gps_enable = 1;
+        } else {
+            gps_enable = 0;
+        }
     }
 
 func_exit:
@@ -1305,8 +1580,8 @@ int set_uart(int fd, int speed, int flow_ctrl, int databits, int stopbits, char 
     options.c_oflag &= ~OPOST;
     options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
 
-    options.c_cc[VTIME] = 2;
-    options.c_cc[VMIN] = 0;
+    options.c_cc[VTIME] = 0;
+    options.c_cc[VMIN] = 255;
 
     //clean input and output buffer
     tcflush(fd, TCIFLUSH);
