@@ -1,7 +1,5 @@
 #include "dc_common.h"
 
-extern node_s* sdeveloper;
-
 /*
  * func:
  *      generate json-file according to the tree
@@ -480,6 +478,7 @@ rdata_s* read_json(const char* path, const char* option)
     FILE* fp;
     char buf[256];
     char *name, *value;
+    int ret, i, mode;
     rdata_s* h = NULL;
     rdata_s* t = NULL;
 
@@ -488,6 +487,98 @@ rdata_s* read_json(const char* path, const char* option)
         perror("read_json: open file failed");
         goto func_exit;
     }
+    while (NULL != fgets(buf, 256, fp)) {
+        // printf("%s:buf[%s]\n", __func__, buf);
+        ret = strlen(buf);
+        mode = 0;
+        name = buf + ret;
+        value = buf + ret;
+        for (i = 0; i < ret; i++) {
+            switch (mode) {
+            case 0:
+                if (buf[i] == '\"') {
+                    name = buf + i + 1;
+                    mode = 1;
+                }
+                break;
+            case 1:
+                if (buf[i] == '\"') {
+                    buf[i] = 0;
+                    mode = 2;
+                }
+                break;
+            case 2:
+                if (buf[i] == '\"') {
+                    value = buf + i + 1;
+                    mode = 3;
+                }
+                break;
+            case 3:
+                if (buf[i] == '\"') {
+                    buf[i] = 0;
+                    mode = 4;
+                }
+                break;
+            default:
+                break;
+            }
+            if (mode > 3) {
+                break;
+            }
+        }
+
+        if (strlen(name) == 0) {
+            continue;
+        }
+
+        if (mode < 4) {
+            if (option != NULL) {
+                continue;
+            } else {
+                if (h == NULL) {
+                    h = t = (rdata_s*)malloc(sizeof(rdata_s));
+                } else {
+                    t->next = (rdata_s*)malloc(sizeof(rdata_s));
+                    t = t->next;
+                }
+                strcpy(t->name, name);
+                t->pvalue = NULL;
+                t->next = NULL;
+                continue;
+            }
+        }
+
+        if (strlen(value) == 0) {
+            continue;
+        }
+
+        // printf("%s:name[%s] value[%s]\n", __func__, name, value);
+
+        if (option == NULL) {
+            if (h == NULL) {
+                h = t = (rdata_s*)malloc(sizeof(rdata_s));
+            } else {
+                t->next = (rdata_s*)malloc(sizeof(rdata_s));
+                t = t->next;
+            }
+            strcpy(t->name, name);
+            t->pvalue = (char*)malloc(strlen(value) + 1);
+            strcpy(t->pvalue, value);
+            t->next = NULL;
+        } else {
+            if (0 == strcmp(option, name)) {
+                h = (rdata_s*)malloc(sizeof(rdata_s));
+                strcpy(h->name, name);
+                h->pvalue = (char*)malloc(strlen(value) + 1);
+                strcpy(h->pvalue, value);
+                h->next = NULL;
+                goto func_exit;
+            } else {
+                continue;
+            }
+        }
+    }
+#if 0
     while (NULL != fgets(buf, 256, fp)) {
         name = strtok(buf, "{[\t\n \"");
         if (name == NULL)
@@ -534,6 +625,7 @@ rdata_s* read_json(const char* path, const char* option)
             }
         }
     }
+#endif
 
 func_exit:
     if (fp != NULL)

@@ -95,7 +95,7 @@ sdata_s dvlp_t[] = {
     { JSON_STRING, CNAME_B2LNUM, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_BBSFNUM, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_VMODE, NULL, NULL, CNAME_NULL, 1 },
-    { JSON_STRING, CNAME_BSTABLE, NULL, NULL, CNAME_NULL, 0 },
+    { JSON_STRING, CNAME_FSTABLE, NULL, NULL, CNAME_NULL, 0 },
     { JSON_STRING, CNAME_DSTABLE, NULL, NULL, CNAME_NULL, 0 },
 };
 int dvlp_cnt = sizeof(dvlp_t) / sizeof(dvlp_t[0]);
@@ -135,30 +135,31 @@ sdata_s config_t[] = {
     { JSON_STRING, CNAME_AUDIOMIC, NULL, &io_audioVol, CNAME_AUDIO, 1 },
     { JSON_STRING, CNAME_AUDIOALC, NULL, &io_audioVol, CNAME_AUDIO, 1 },
     { JSON_NORMAL, CNAME_DATAPORT, NULL, NULL, CNAME_NULL, 1 },
-    { JSON_STRING, CNAME_UART0RATE, NULL, &io_dataRate, CNAME_DATAPORT, 1 },
-    { JSON_STRING, CNAME_UART0PARITY, NULL, &io_dataParity, CNAME_DATAPORT, 1 },
-    { JSON_STRING, CNAME_UART0DATAWIDTH, NULL, &io_dataWidth, CNAME_DATAPORT, 1 },
-    { JSON_STRING, CNAME_UART0STOP, NULL, &io_stopBit, CNAME_DATAPORT, 1 },
-    //{JSON_STRING, "data0FlowControl", NULL, NULL, CNAME_DATAPORT, 1},
+    { JSON_NORMAL, CNAME_DATAPORT0, NULL, NULL, CNAME_DATAPORT, 1 },
+    { JSON_STRING, CNAME_UARTRATE, NULL, &io_dataRate, CNAME_DATAPORT0, 1 },
+    { JSON_STRING, CNAME_UARTPARITY, NULL, &io_dataParity, CNAME_DATAPORT0, 1 },
+    { JSON_STRING, CNAME_UARTDATAWIDTH, NULL, &io_dataWidth, CNAME_DATAPORT0, 1 },
+    { JSON_STRING, CNAME_UARTSTOP, NULL, &io_stopBit, CNAME_DATAPORT0, 1 },
+    //{JSON_STRING, "data0FlowControl", NULL, NULL, CNAME_DATAPORT0, 1},
     { JSON_NORMAL, CNAME_GPS, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_GPSENABLE, NULL, &io_gpsEnable, CNAME_GPS, 1 },
     { JSON_NORMAL, CNAME_ROUTE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_NORMAL, CNAME_ROUTE0, NULL, NULL, CNAME_ROUTE, 1 },
-    { JSON_STRING, CNAME_ROUTE0ADDR, NULL, &io_route, CNAME_ROUTE0, 1 },
-    { JSON_STRING, CNAME_ROUTE0MASK, NULL, &io_route, CNAME_ROUTE0, 1 },
-    { JSON_STRING, CNAME_ROUTE0GATE, NULL, &io_route, CNAME_ROUTE0, 1 },
+    { JSON_STRING, CNAME_ROUTEADDR, NULL, &io_route, CNAME_ROUTE0, 1 },
+    { JSON_STRING, CNAME_ROUTEMASK, NULL, &io_route, CNAME_ROUTE0, 1 },
+    { JSON_STRING, CNAME_ROUTEGATE, NULL, &io_route, CNAME_ROUTE0, 1 },
     { JSON_NORMAL, CNAME_ROUTE1, NULL, NULL, CNAME_ROUTE, 1 },
-    { JSON_STRING, CNAME_ROUTE1ADDR, NULL, &io_route, CNAME_ROUTE1, 1 },
-    { JSON_STRING, CNAME_ROUTE1MASK, NULL, &io_route, CNAME_ROUTE1, 1 },
-    { JSON_STRING, CNAME_ROUTE1GATE, NULL, &io_route, CNAME_ROUTE1, 1 },
+    { JSON_STRING, CNAME_ROUTEADDR, NULL, &io_route, CNAME_ROUTE1, 1 },
+    { JSON_STRING, CNAME_ROUTEMASK, NULL, &io_route, CNAME_ROUTE1, 1 },
+    { JSON_STRING, CNAME_ROUTEGATE, NULL, &io_route, CNAME_ROUTE1, 1 },
     { JSON_NORMAL, CNAME_ROUTE2, NULL, NULL, CNAME_ROUTE, 1 },
-    { JSON_STRING, CNAME_ROUTE2ADDR, NULL, &io_route, CNAME_ROUTE2, 1 },
-    { JSON_STRING, CNAME_ROUTE2MASK, NULL, &io_route, CNAME_ROUTE2, 1 },
-    { JSON_STRING, CNAME_ROUTE2GATE, NULL, &io_route, CNAME_ROUTE2, 1 },
+    { JSON_STRING, CNAME_ROUTEADDR, NULL, &io_route, CNAME_ROUTE2, 1 },
+    { JSON_STRING, CNAME_ROUTEMASK, NULL, &io_route, CNAME_ROUTE2, 1 },
+    { JSON_STRING, CNAME_ROUTEGATE, NULL, &io_route, CNAME_ROUTE2, 1 },
     { JSON_NORMAL, CNAME_ROUTE3, NULL, NULL, CNAME_ROUTE, 1 },
-    { JSON_STRING, CNAME_ROUTE3ADDR, NULL, &io_route, CNAME_ROUTE3, 1 },
-    { JSON_STRING, CNAME_ROUTE3MASK, NULL, &io_route, CNAME_ROUTE3, 1 },
-    { JSON_STRING, CNAME_ROUTE3GATE, NULL, &io_route, CNAME_ROUTE3, 1 },
+    { JSON_STRING, CNAME_ROUTEADDR, NULL, &io_route, CNAME_ROUTE3, 1 },
+    { JSON_STRING, CNAME_ROUTEMASK, NULL, &io_route, CNAME_ROUTE3, 1 },
+    { JSON_STRING, CNAME_ROUTEGATE, NULL, &io_route, CNAME_ROUTE3, 1 },
 };
 int config_cnt = sizeof(config_t) / sizeof(config_t[0]);
 
@@ -207,8 +208,10 @@ int main(int argc, char* argv[])
     if (dc_init()) {
         goto main_exit;
     }
+    // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
 
     init_tree();
+    // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
 
 #if 0
     int i;
@@ -219,6 +222,7 @@ int main(int argc, char* argv[])
 #endif
 
     init_device();
+    // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
     usleep(100000);
     update_local_status();
 
@@ -241,6 +245,7 @@ int main(int argc, char* argv[])
 
     while (1) {
         sleep(10);
+        // print_sdata();
     }
 
 main_exit:
@@ -262,7 +267,6 @@ int init_tree()
 {
     int i, j;
     char init_flag = 0;
-    char buf[1024], temp[32];
 
 #if 0
     //initialize read-only data
@@ -288,25 +292,35 @@ int init_tree()
     // insert_node(csettings, croute);
 
     rdata_s* init;
+    // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
     init = read_json(INIT_PATH, NULL);
+    // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
     if (init != NULL) {
         update_config(init);
+        // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
         free_rdata(init);
     } else {
         fprintf(stderr, "init.json is broken, try to restore it\n");
         init = read_json(DEFAULT_PATH, NULL);
+        // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
         if (init == NULL) {
             fprintf(stderr, "default.json is broken! restore failed\n");
             exit(1);
         }
         update_config(init);
+        // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
         free_rdata(init);
         init_flag = 1;
     }
+    // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
 
     //read node id from config_t[]
     for (i = 0; i < config_cnt; i++) {
         if (0 == strcmp(config_t[i].name, CNAME_NODEID)) {
+            if (config_t[i].pvalue == NULL) {
+                fprintf(stderr, "%s: node id is null\n", __func__);
+                exit(1);
+            }
             sscanf(config_t[i].pvalue, "%u", (int*)&sa);
             if (sa > MAX_NODE_CNT) {
                 fprintf(stderr, "%s: nodeId is invalid\n", __func__);
@@ -341,10 +355,10 @@ int init_tree()
     sdeveloper = create_node(JSON_NORMAL, CNAME_DVLP, NULL, 1);
 
     insert_node(status_root, sflags);
-    insert_node(status_root, sstatus);
-    insert_node(status_root, ssigtable);
     insert_node(status_root, sinformation);
     insert_node(status_root, sdeveloper);
+    insert_node(status_root, sstatus);
+    insert_node(status_root, ssigtable);
 
     //initialize flags
     insert_node(sflags, create_node(JSON_STRING, CNAME_OL, "0", 1));
@@ -367,32 +381,6 @@ int init_tree()
     // }
     // mod_node(snode_data[sa-1]->child_h.next->pnode, "15");
 
-    //initialize signal quality table
-    for (i = 0; i < MAX_NODE_CNT; i++) {
-        sigs[i] = create_node(JSON_CUSTOM1, NULL, NULL, 0);
-        insert_node(ssigtable, sigs[i]);
-    }
-    update_sig();
-    for (i = 0; i < MAX_NODE_CNT; i++) {
-        buf[0] = 0;
-        for (j = 0; j < MAX_NODE_CNT; j++) {
-            sprintf(temp, "%u", sigQuality_t[i][j]);
-            strcat(buf, temp);
-            if (j < MAX_NODE_CNT - 1) {
-                strcat(buf, ", ");
-            }
-        }
-        if (sigs[i]->pvalue == NULL) {
-            sigs[i]->pvalue = (char*)malloc(strlen(buf) + 1);
-        } else {
-            if (strlen(sigs[i]->pvalue) < strlen(buf)) {
-                free(sigs[i]->pvalue);
-                sigs[i]->pvalue = (char*)malloc(strlen(buf) + 1);
-            }
-        }
-        strcpy(sigs[i]->pvalue, buf);
-    }
-
     //initialize information table
     update_info();
     // for(i = 0; i < info_cnt; i++){
@@ -406,6 +394,14 @@ int init_tree()
     // for(i = 0; i < dvlp_cnt; i++){
     //     insert_node(sdeveloper, create_node(JSON_STRING, dvlp_t[i].name, dvlp_t[i].pvalue));
     // }
+
+    //initialize signal quality table
+    for (i = 0; i < MAX_NODE_CNT; i++) {
+        sigs[i] = create_node(JSON_CUSTOM1, NULL, NULL, 0);
+        insert_node(ssigtable, sigs[i]);
+    }
+    update_sig();
+
     gen_tree(sdeveloper, &dvlp_t[0], dvlp_cnt);
 
 func_exit:
@@ -518,9 +514,38 @@ func_exit:
 }
 #endif
 
+#if 1
+char fortest = 0;
+#endif
 void update_sig()
 {
-    memset(sigQuality_t, 255, sizeof(sigQuality_t));
+    char buf[1024], temp[32];
+    int i, j;
+
+#if 1
+    memset(sigQuality_t, (fortest++)%256, sizeof(sigQuality_t));
+#endif
+    // fprintf(stderr, "%s:here\n", __func__);
+
+    for (i = 0; i < MAX_NODE_CNT; i++) {
+        buf[0] = 0;
+        for (j = 0; j < MAX_NODE_CNT; j++) {
+            sprintf(temp, "%u", sigQuality_t[i][j]);
+            strcat(buf, temp);
+            if (j < MAX_NODE_CNT - 1) {
+                strcat(buf, ", ");
+            }
+        }
+        if (sigs[i]->pvalue == NULL) {
+            sigs[i]->pvalue = (char*)malloc(strlen(buf) + 1);
+        } else {
+            if (strlen(sigs[i]->pvalue) < strlen(buf)) {
+                free(sigs[i]->pvalue);
+                sigs[i]->pvalue = (char*)malloc(strlen(buf) + 1);
+            }
+        }
+        strcpy(sigs[i]->pvalue, buf);
+    }
 
     return;
 }
@@ -660,7 +685,7 @@ void update_dvlp()
         } else if (strcmp(dvlp_t[i].name, CNAME_VMODE) == 0) {
             sprintf(buf, "%u", hm_state->vmode);
             modify_value(&dvlp_t[i].pvalue, buf);
-        } else if (strcmp(dvlp_t[i].name, CNAME_BSTABLE) == 0) {
+        } else if (strcmp(dvlp_t[i].name, CNAME_FSTABLE) == 0) {
             for (j = 0; j < 32; j++) {
                 if (j == 0) {
                     sprintf(temp, "[%u, ", hm_state->bsmap[j]);
@@ -713,14 +738,19 @@ func_exit:
 void update_config(rdata_s* init)
 {
     int i, len;
+    char fname[64];
 
     while (init != NULL) {
+        if (init->pvalue == NULL) {
+            strcpy(fname, init->name);
+            init = init->next;
+            continue;
+        }
         for (i = 0; i < config_cnt; i++) {
-            if (strcmp(init->name, config_t[i].name) == 0) {
+            if ((strcmp(init->name, config_t[i].name) == 0) && ((strcmp(fname, config_t[i].fname) == 0) || (strcmp(config_t[i].fname, CNAME_NULL) == 0))) {
                 len = strlen(init->pvalue);
                 if (config_t[i].pvalue == NULL) {
                     config_t[i].pvalue = (char*)malloc(len + 1);
-                    // fprintf(stderr, "%s%d: %s,%s\n", __func__, __LINE__, config_t[i].name, init->pvalue);
                 } else {
                     if (len > (int)strlen(config_t[i].pvalue)) {
                         free(config_t[i].pvalue);
@@ -728,6 +758,7 @@ void update_config(rdata_s* init)
                     }
                 }
                 strcpy(config_t[i].pvalue, init->pvalue);
+                // fprintf(stderr, "%s%d: %s,%s\n", __func__, __LINE__, config_t[i].name, init->pvalue);
                 break;
             }
         }
@@ -839,7 +870,7 @@ void chk_online(U32 arg)
 
     pthread_mutex_lock(&pmutex);
 
-    if ((pd = read_json(STATUS_PATH, "online")) == NULL) {
+    if ((pd = read_json(STATUS_PATH, CNAME_OL)) == NULL) {
         fprintf(stderr, "status.json is doubted broken\n");
         gen_json(STATUS_PATH, status_root);
         goto func_exit;
@@ -851,6 +882,8 @@ void chk_online(U32 arg)
 #if ON_BOARD
         update_dvlp();
 #endif
+
+        update_sig();
 
         //send request to other node
         send_req();
@@ -877,7 +910,7 @@ void chk_config(U32 arg)
 
     pthread_mutex_lock(&pmutex);
 
-    if ((pd = read_json(CONFIG_PATH, "config")) == NULL) {
+    if ((pd = read_json(CONFIG_PATH, CNAME_CONFIG)) == NULL) {
         fprintf(stderr, "%s:config.json is doubted broken\n", __func__);
         gen_json(CONFIG_PATH, config_root);
         goto func_exit;
@@ -913,7 +946,7 @@ void chk_reset(U32 arg)
 
     pthread_mutex_lock(&pmutex);
 
-    if ((pd = read_json(CONFIG_PATH, "reset")) == NULL) {
+    if ((pd = read_json(CONFIG_PATH, CNAME_RESET)) == NULL) {
         fprintf(stderr, "config.json is doubted broken\n");
         gen_json(CONFIG_PATH, config_root);
         goto func_exit;
@@ -1112,6 +1145,7 @@ int cmp_config(rdata_s* rdata)
     int i, len;
     node_s* node;
     int rval = 0;
+    char fname[64];
 
 #if ON_BOARD
     int fd;
@@ -1124,13 +1158,19 @@ int cmp_config(rdata_s* rdata)
 #endif
 
     while (rdata != NULL) {
+        if (rdata->pvalue == NULL) {
+            strcpy(fname, rdata->name);
+            rdata = rdata->next;
+            continue;
+        }
         for (i = 0; i < config_cnt; i++) {
-            if (strcmp(rdata->name, config_t[i].name) == 0) {
+            if ((strcmp(rdata->name, config_t[i].name) == 0) && ((strcmp(fname, config_t[i].fname) == 0) || (strcmp(config_t[i].fname, CNAME_NULL) == 0))) {
                 if (config_t[i].pvalue == NULL) {
                     //maybe need more code
                 }
                 if (strcmp(rdata->pvalue, config_t[i].pvalue) != 0) {
                     if (config_t[i].pfunc != NULL) {
+                        // fprintf(stderr, "%s:configuring %s, pvalue = %s\n", __func__, config_t[i].name, rdata->pvalue);
                         rval = (*config_t[i].pfunc)(i, 2, rdata->pvalue);
                         usleep(100000);
 
@@ -1146,7 +1186,11 @@ int cmp_config(rdata_s* rdata)
                         modify_value(&config_t[i].pvalue, rdata->pvalue);
 
                         //update tree
-                        node = search_node(config_root, rdata->name);
+                        if ((node = search_node(config_root, fname)) == NULL) {
+                            node = search_node(config_root, rdata->name);
+                        } else {
+                            node = search_node(node, rdata->name);
+                        }
                         if (len > (int)strlen(node->pvalue)) {
                             free(node->pvalue);
                             node->pvalue = (char*)malloc(len + 1);
@@ -1193,8 +1237,10 @@ int add_config()
 
     //config route
     for (i = 0; i < ROUTE_CNT; i++) {
-        config_route(i);
-        route_flag[i] = 0;
+        if (route_flag[i]) {
+            config_route(i);
+            route_flag[i] = 0;
+        }
     }
 
 func_exit:
@@ -1487,6 +1533,7 @@ void* rcv_thread(void* arg)
                     // }else{
                     //     update_time(pm->node, 15);
                     // }
+                    update_sig();
                     if (rval) {
                         fprintf(stderr, "%s,%d:update_node_status failed, rval = %d\n", __func__, __LINE__, rval);
                     } else {
@@ -1643,6 +1690,7 @@ func_exit:
     return rval;
 }
 
+//abandoned
 void update_time(int addr, int value)
 {
     node_s* node;
@@ -1746,7 +1794,7 @@ int stat2tree(node_s* pn, sdata_s* sdata)
     int rval = 0;
     node_s *node, *pfn;
 
-    if (strcmp(sdata->fname, "null") == 0) {
+    if (strcmp(sdata->fname, CNAME_NULL) == 0) {
         node = create_node(sdata->type, sdata->name, sdata->pvalue, sdata->isstr);
         if (node == NULL) {
             fprintf(stderr, "%s,%d:%s is set wrong\n", __func__, __LINE__, sdata->name);
@@ -1788,8 +1836,12 @@ void* gps_thread(void* arg)
 
     while (1) {
         if (gps_enable) {
-            //open file descriptor
+//open file descriptor
+#if ON_BOARD
             fd = open(UART0_PATH, O_RDONLY);
+#else
+            fd = open("gps_info.txt", O_RDONLY);
+#endif
             if (fd < 0) {
                 perror("open uart");
                 goto thread_exit;
@@ -1799,8 +1851,21 @@ void* gps_thread(void* arg)
             continue;
         }
 
+#if !ON_BOARD
+        ret = read(fd, buf, 1023);
+        if (ret < 0) {
+            perror("read");
+            goto thread_exit;
+        } else if (ret == 0) {
+            fprintf(stderr, "%s,%d:error!ret = %d\n", __func__, __LINE__, ret);
+            goto thread_exit;
+        }
+        buf[ret] = 0;
+#endif
+
         while (gps_enable) {
-            //read gps information
+//read gps information
+#if ON_BOARD
             ret = read(fd, buf, 1023);
             if (ret < 0) {
                 perror("read");
@@ -1811,6 +1876,7 @@ void* gps_thread(void* arg)
                 continue;
             }
             buf[ret] = 0;
+#endif
             // fprintf(stderr, "%s: ret = %d\nbuf = %s\n\n", __func__, ret, buf);
 
             i = 0;
@@ -1984,5 +2050,25 @@ void* gps_thread(void* arg)
     }
 
 thread_exit:
+    if (fd != -1) {
+        close(fd);
+    }
     pthread_exit((void*)&rval);
+}
+
+void print_sdata()
+{
+    int i = 0;
+    char snull[] = "(null)";
+
+    printf("\n*******status_data*******\n");
+    for (i = 0; i < status_cnt; i++) {
+        printf("type=%d,name[%s],pvalue[%s],fname[%s],isstr=%d\n", status_data[i].type, status_data[i].name, (status_data[i].pvalue != NULL) ? status_data[i].pvalue : snull, status_data[i].fname, status_data[i].isstr);
+    }
+    printf("\n+++++++config_t+++++++n");
+    for (i = 0; i < config_cnt; i++) {
+        printf("type=%d,name[%s],pvalue[%s],fname[%s],isstr=%d\n", config_t[i].type, config_t[i].name, (config_t[i].pvalue != NULL) ? config_t[i].pvalue : snull, config_t[i].fname, config_t[i].isstr);
+    }
+
+    return;
 }

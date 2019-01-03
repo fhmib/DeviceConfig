@@ -1,56 +1,58 @@
 {
-	"flags": {
-		"config": "0",
-		"reset": "0"
+	"Flags": {
+		"Config": "0",
+		"Reset": "0"
 	},
-	"main": {
-		"nodeId": "4",
-		"nodeName": "2WL-1608004",
-		"meshId": "157",
-		"centreFreq": "1395",
-		"chanBandwidth": "5",
-		"tfci": "255",
-		"TXPower": "5",
-		"reduceMimo": "0",
-		"ipAddress": "192.168.0.4",
-		"ipMask": "255.255.255.0",
-		"ipGateway": "192.168.0.1"
+	"Main": {
+		"Node Id": "4",
+		"Node Name": "2WL-1608004",
+		"Mesh Id": "157",
+		"Centre Frequency": "1395",
+		"Channel Bandwidth": "5",
+		"MCS": "255",
+		"Tx Power": "5",
+		"Mimo Mode": "0",
+		"IP Address": "192.168.0.4",
+		"Subnet Mask": "255.255.255.0",
+		"Gateway": "192.168.0.1"
 	},
-	"audio": {
-		"audioEnable": "1",
-		"audioHeadGain": "45",
-		"audioMicGain": "45",
-		"audioMuteLevel": "20"
+	"Audio": {
+		"Audio Mode": "1",
+		"Headphone Volume": "45",
+		"Microphone Volume": "45",
+		"Mute Threshold": "20"
 	},
-	"dataPort": {
-		"data0BaudRate": "9600",
-		"data0Parity": "None",
-		"data0DataWidth": "8",
-		"data0StopBit": "1"
+    "Serial Port": {
+        "Serial Port 0": {
+            "Baud Rate": "9600",
+            "Parity": "None",
+            "Data Width": "8",
+            "Stop Bits": "1"
+        }
+    },
+    "GPS": {
+		"GPS Mode": "1"
 	},
-	"gps": {
-		"gpsEnable": "1"
-	},
-	"staticRoute": {
-		"staticRoute0": {
-			"staticRoute0Network": "0.0.0.0",
-			"staticRoute0SubMask": "0.0.0.0",
-			"staticRoute0GateWay": "0.0.0.0"
+	"Static Route": {
+		"Static Route 0": {
+			"Network/Host IP Address": "0.0.0.0",
+			"Subnet Mask": "0.0.0.0",
+			"Gateway": "0.0.0.0"
 		},
-		"staticRoute1": {
-			"staticRoute1Network": "0.0.0.0",
-			"staticRoute1SubMask": "0.0.0.0",
-			"staticRoute1GateWay": "0.0.0.0"
+		"Static Route 1": {
+			"Network/Host IP Address": "0.0.0.0",
+			"Subnet Mask": "0.0.0.0",
+			"Gateway": "0.0.0.0"
 		},
-		"staticRoute2": {
-			"staticRoute2Network": "0.0.0.0",
-			"staticRoute2SubMask": "0.0.0.0",
-			"staticRoute2GateWay": "0.0.0.0"
+		"Static Route 2": {
+			"Network/Host IP Address": "0.0.0.0",
+			"Subnet Mask": "0.0.0.0",
+			"Gateway": "0.0.0.0"
 		},
-		"staticRoute3": {
-			"staticRoute3Network": "0.0.0.0",
-			"staticRoute3SubMask": "0.0.0.0",
-			"staticRoute3GateWay": "0.0.0.0"
+		"Static Route 3": {
+			"Network/Host IP Address": "0.0.0.0",
+			"Subnet Mask": "0.0.0.0",
+			"Gateway": "0.0.0.0"
 		}
 	}
 }

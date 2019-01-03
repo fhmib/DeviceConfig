@@ -809,7 +809,10 @@ int io_dataRate(int index, char mode, char* pvalue)
             rval = 2;
             goto func_exit;
         } else {
-            i = getnumfromstr(config_t[index].name);
+            // i = getnumfromstr(config_t[index].fname);
+            if (strcmp(config_t[index].fname, CNAME_DATAPORT0) == 0) {
+                i = 0;
+            }
             port_flag[i] = 1;
         }
     }
@@ -836,7 +839,10 @@ int io_dataParity(int index, char mode, char* pvalue)
             rval = 2;
             goto func_exit;
         } else {
-            i = getnumfromstr(config_t[index].name);
+            // i = getnumfromstr(config_t[index].fname);
+            if (strcmp(config_t[index].fname, CNAME_DATAPORT0) == 0) {
+                i = 0;
+            }
             port_flag[i] = 1;
         }
     }
@@ -861,7 +867,10 @@ int io_dataWidth(int index, char mode, char* pvalue)
             goto func_exit;
         }
 
-        i = getnumfromstr(config_t[index].name);
+        // i = getnumfromstr(config_t[index].fname);
+        if (strcmp(config_t[index].fname, CNAME_DATAPORT0) == 0) {
+            i = 0;
+        }
         port_flag[i] = 1;
     }
 
@@ -884,7 +893,10 @@ int io_stopBit(int index, char mode, char* pvalue)
             rval = 2;
             goto func_exit;
         }
-        i = getnumfromstr(config_t[index].name);
+        // i = getnumfromstr(config_t[index].fname);
+        if (strcmp(config_t[index].fname, CNAME_DATAPORT0) == 0) {
+            i = 0;
+        }
         port_flag[i] = 1;
     }
 
@@ -922,7 +934,16 @@ int io_route(int index, char mode, char* pvalue)
         rval = 1;
         goto func_exit;
     } else {
-        i = getnumfromstr(config_t[index].name);
+        // i = getnumfromstr(config_t[index].fname);
+        if (strcmp(config_t[index].fname, CNAME_ROUTE0) == 0) {
+            i = 0;
+        } else if (strcmp(config_t[index].fname, CNAME_ROUTE1) == 0) {
+            i = 1;
+        } else if (strcmp(config_t[index].fname, CNAME_ROUTE2) == 0) {
+            i = 2;
+        } else if (strcmp(config_t[index].fname, CNAME_ROUTE3) == 0) {
+            i = 3;
+        }
         if (route_flag[i] == 0) {
             del_route(i);
         }
@@ -1351,15 +1372,15 @@ int config_uart(int which)
         port_path = (char*)malloc(strlen(UART0_PATH) + 1);
         strcpy(port_path, UART0_PATH);
         for (i = 0; i < config_cnt; i++) {
-            if (strcmp(config_t[i].name, CNAME_UART0RATE) == 0) {
+            if ((strcmp(config_t[i].name, CNAME_UARTRATE) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 sscanf(config_t[i].pvalue, "%d", &speed);
-            } else if (strcmp(config_t[i].name, CNAME_UART0PARITY) == 0) {
+            } else if ((strcmp(config_t[i].name, CNAME_UARTPARITY) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 //fprintf(stderr, "%s\n", config_t[i].pvalue);
                 sparity = config_t[i].pvalue;
-            } else if (strcmp(config_t[i].name, CNAME_UART0DATAWIDTH) == 0) {
+            } else if ((strcmp(config_t[i].name, CNAME_UARTDATAWIDTH) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 //fprintf(stderr, "%s\n", config_t[i].pvalue);
                 sscanf(config_t[i].pvalue, "%d", &dataw);
-            } else if (strcmp(config_t[i].name, CNAME_UART0STOP) == 0) {
+            } else if ((strcmp(config_t[i].name, CNAME_UARTSTOP) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 //fprintf(stderr, "%s\n", config_t[i].pvalue);
                 sscanf(config_t[i].pvalue, "%d", &stopb);
             }
@@ -1673,15 +1694,25 @@ int drvFPGA_Close(int* p_fd)
     return 0;
 }
 
-void del_route(int index)
+void del_route(int which)
 {
     char *onet, *omask, *ogate;
     int i;
-    char buf[128];
+    char buf[128], fname[64];
 
-    sprintf(buf, "staticRoute%dNetwork", index);
+    if (which == 0) {
+        strcpy(fname, CNAME_ROUTE0);
+    } else if (which == 1) {
+        strcpy(fname, CNAME_ROUTE1);
+    } else if (which == 2) {
+        strcpy(fname, CNAME_ROUTE2);
+    } else if (which == 3) {
+        strcpy(fname, CNAME_ROUTE3);
+    }
+
+    // sprintf(buf, "staticRoute%dNetwork", index);
     for (i = 0; i < config_cnt; i++) {
-        if (strcmp(config_t[i].name, buf) == 0) {
+        if ((strcmp(config_t[i].name, CNAME_ROUTEADDR)) == 0 && (strcmp(config_t[i].fname, fname) == 0)) {
             onet = config_t[i].pvalue;
             break;
         }
@@ -1692,9 +1723,10 @@ void del_route(int index)
     }
 
     if (ipisnull(onet)) {
-        sprintf(buf, "staticRoute%dGateWay", index);
+        // sprintf(buf, "staticRoute%dGateWay", index);
         for (i = 0; i < config_cnt; i++) {
-            if (strcmp(config_t[i].name, buf) == 0) {
+            // if (strcmp(config_t[i].name, buf) == 0) {
+            if ((strcmp(config_t[i].name, CNAME_ROUTEGATE)) == 0 && (strcmp(config_t[i].fname, fname) == 0)) {
                 ogate = config_t[i].pvalue;
                 break;
             }
@@ -1717,9 +1749,10 @@ void del_route(int index)
         }
 
     } else if (ipishost(onet)) {
-        sprintf(buf, "staticRoute%dGateWay", index);
+        // sprintf(buf, "staticRoute%dGateWay", index);
         for (i = 0; i < config_cnt; i++) {
-            if (strcmp(config_t[i].name, buf) == 0) {
+            // if (strcmp(config_t[i].name, buf) == 0) {
+            if ((strcmp(config_t[i].name, CNAME_ROUTEGATE)) == 0 && (strcmp(config_t[i].fname, fname) == 0)) {
                 ogate = config_t[i].pvalue;
                 break;
             }
@@ -1741,9 +1774,10 @@ void del_route(int index)
 #endif
         }
     } else {
-        sprintf(buf, "staticRoute%dSubMask", index);
+        // sprintf(buf, "staticRoute%dSubMask", index);
         for (i = 0; i < config_cnt; i++) {
-            if (strcmp(config_t[i].name, buf) == 0) {
+            // if (strcmp(config_t[i].name, buf) == 0) {
+            if ((strcmp(config_t[i].name, CNAME_ROUTEMASK)) == 0 && (strcmp(config_t[i].fname, fname) == 0)) {
                 omask = config_t[i].pvalue;
                 break;
             }
@@ -1777,17 +1811,29 @@ void config_route(int which)
     char* ogate = NULL;
     int i;
     char cmd[128];
-    char nbuf[32], mbuf[32], gbuf[32];
-
+    char fname[64];
+    // char nbuf[32], mbuf[32], gbuf[32];
+    /* 
     sprintf(nbuf, "staticRoute%dNetwork", which);
     sprintf(mbuf, "staticRoute%dSubMask", which);
     sprintf(gbuf, "staticRoute%dGateWay", which);
+ */
+    if (which == 0) {
+        strcpy(fname, CNAME_ROUTE0);
+    } else if (which == 1) {
+        strcpy(fname, CNAME_ROUTE1);
+    } else if (which == 2) {
+        strcpy(fname, CNAME_ROUTE2);
+    } else if (which == 3) {
+        strcpy(fname, CNAME_ROUTE3);
+    }
+
     for (i = 0; i < config_cnt; i++) {
-        if (strcmp(config_t[i].name, nbuf) == 0) {
+        if ((strcmp(config_t[i].name, CNAME_ROUTEADDR) == 0) && (strcmp(config_t[i].fname, fname) == 0)) {
             onet = config_t[i].pvalue;
-        } else if (strcmp(config_t[i].name, mbuf) == 0) {
+        } else if ((strcmp(config_t[i].name, CNAME_ROUTEMASK) == 0) && (strcmp(config_t[i].fname, fname) == 0)) {
             omask = config_t[i].pvalue;
-        } else if (strcmp(config_t[i].name, gbuf) == 0) {
+        } else if ((strcmp(config_t[i].name, CNAME_ROUTEGATE) == 0) && (strcmp(config_t[i].fname, fname) == 0)) {
             ogate = config_t[i].pvalue;
         }
     }
