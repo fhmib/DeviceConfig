@@ -511,18 +511,27 @@ rdata_s* read_json(const char* path, const char* option)
                 if (buf[i] == '\"') {
                     value = buf + i + 1;
                     mode = 3;
+                } else if (buf[i] == '[') {
+                    value = buf + i + 1;
+                    mode = 4;
                 }
                 break;
             case 3:
                 if (buf[i] == '\"') {
                     buf[i] = 0;
-                    mode = 4;
+                    mode = 5;
+                }
+                break;
+            case 4:
+                if (buf[i] == ']') {
+                    buf[i] = 0;
+                    mode = 5;
                 }
                 break;
             default:
                 break;
             }
-            if (mode > 3) {
+            if (mode > 4) {
                 break;
             }
         }
@@ -531,7 +540,7 @@ rdata_s* read_json(const char* path, const char* option)
             continue;
         }
 
-        if (mode < 4) {
+        if (mode < 5) {
             if (option != NULL) {
                 continue;
             } else {
@@ -733,6 +742,8 @@ int ipishost(const char* buf)
 /*
  * func:
  *      get the number from a string, for example, '32' from the string 'node_32' or 12 from the string 'dataPort12Speed'.
+ * ret:
+ *      failure:                -1;
  */
 int getnumfromstr(char* arg)
 {
@@ -746,6 +757,9 @@ int getnumfromstr(char* arg)
             break;
         }
         p++;
+    }
+    if (*p == 0) {
+        value = -1;
     }
 
     return value;

@@ -42,13 +42,18 @@ int timeout[MAX_NODE_CNT] = { 0 };
 //local status table
 sdata_s status_data[] = {
     { JSON_NORMAL, CNAME_NOTDEF, NULL, NULL, CNAME_NULL, 1 },
-    { JSON_NORMAL, CNAME_NODEHEADER, NULL, NULL, CNAME_NOTDEF, 1 },
+    { JSON_NORMAL, CNAME_NODEHEADER, NULL, &io_nodeHeader, CNAME_NOTDEF, 1 },
     { JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_NODEHEADER, 1 },
     { JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_NODEHEADER, 1 },
     { JSON_STRING, CNAME_SERIAL, NULL, &io_readfrominfo, CNAME_NODEHEADER, 1 },
     { JSON_STRING, CNAME_VOLTAGE, NULL, &io_voltage, CNAME_NODEHEADER, 1 },
     { JSON_STRING, CNAME_TEMP, NULL, &io_temperature, CNAME_NODEHEADER, 1 },
     { JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, CNAME_NODEHEADER, 1 },
+    { JSON_STRING, CNAME_MTUTABLE, NULL, &io_getMtu, CNAME_NODEHEADER, 0 },
+    { JSON_STRING, CNAME_SNR, NULL, &io_getSnr, CNAME_NODEHEADER, 0 },
+    { JSON_STRING, CNAME_NOISE0, NULL, &io_getNoise0, CNAME_NODEHEADER, 0 },
+    { JSON_STRING, CNAME_NOISE1, NULL, &io_getNoise1, CNAME_NODEHEADER, 0 },
+    { JSON_STRING, CNAME_DISTANCE, NULL, &io_getDistance, CNAME_NODEHEADER, 0 },
     { JSON_NORMAL, CNAME_IPSTATUS, NULL, NULL, CNAME_NOTDEF, 1 },
     { JSON_STRING, CNAME_IPTXBYTE, NULL, &io_ipTxByteCnt, CNAME_IPSTATUS, 1 },
     { JSON_STRING, CNAME_IPTXPKT, NULL, &io_ipTxPktCnt, CNAME_IPSTATUS, 1 },
@@ -223,8 +228,6 @@ int main(int argc, char* argv[])
 
     init_device();
     // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
-    usleep(100000);
-    update_local_status();
 
     gen_json(STATUS_PATH, status_root);
     gen_json(CONFIG_PATH, config_root);
@@ -326,7 +329,9 @@ int init_tree()
                 fprintf(stderr, "%s: nodeId is invalid\n", __func__);
                 exit(1);
             }
+#if PRINT_COMMAND
             fprintf(stderr, "%s: sa = %d\n", __func__, sa);
+#endif
         }
     }
 
@@ -390,19 +395,24 @@ int init_tree()
 
 #if ON_BOARD
     update_dvlp();
-#endif
+#else
     // for(i = 0; i < dvlp_cnt; i++){
     //     insert_node(sdeveloper, create_node(JSON_STRING, dvlp_t[i].name, dvlp_t[i].pvalue));
     // }
+
+    gen_tree(sdeveloper, &dvlp_t[0], dvlp_cnt);
+#endif
 
     //initialize signal quality table
     for (i = 0; i < MAX_NODE_CNT; i++) {
         sigs[i] = create_node(JSON_CUSTOM1, NULL, NULL, 0);
         insert_node(ssigtable, sigs[i]);
     }
-    update_sig();
+    // update_sig();
 
-    gen_tree(sdeveloper, &dvlp_t[0], dvlp_cnt);
+    usleep(100000);
+    update_local_status();
+    update_sig();
 
 func_exit:
     return 0;
@@ -427,7 +437,9 @@ int init_device()
         if (config_t[i].pfunc == NULL) {
             continue;
         } else {
+#if PRINT_COMMAND
             printf("%s: configuring %s, value = %s\n", __func__, config_t[i].name, config_t[i].pvalue);
+#endif
             times = 0;
             while (1) {
                 if (config_t[i].pvalue == NULL) {
@@ -514,18 +526,49 @@ func_exit:
 }
 #endif
 
-#if 1
+#if 0
 char fortest = 0;
 #endif
 void update_sig()
 {
     char buf[1024], temp[32];
-    int i, j;
+    int i, j, na, value;
+    node_s* node;
+    node_l* pl;
+    char* p;
 
-#if 1
-    memset(sigQuality_t, (fortest++)%256, sizeof(sigQuality_t));
-#endif
+    // memset(sigQuality_t, (fortest++) % 256, sizeof(sigQuality_t));
+    memset(sigQuality_t, 0, sizeof(sigQuality_t));
     // fprintf(stderr, "%s:here\n", __func__);
+
+    pl = &sstatus->child_h;
+    while (pl->next != NULL) {
+        node = pl->next->pnode;
+        assert(node != NULL);
+        assert(getnumfromstr(node->name) != -1);
+        // fprintf(stderr, "%s: number of the name is %d\n", __func__, getnumfromstr(node->name));
+        na = getnumfromstr(node->name);
+        node = search_node(node, CNAME_MTUTABLE);
+        assert(node != NULL);
+        strcpy(buf, node->pvalue);
+        for (p = strtok(buf, "[], "), i = 0; p != NULL; p = strtok(NULL, "[], "), i++) {
+            if (i >= MAX_NODE_CNT) {
+                fprintf(stderr, "%s: i=%d is invalid\n", __func__, i);
+            }
+            sscanf(p, "%d", &value);
+            if (value <= 5) {
+                value += 1;
+            } else if ((value >= 8) && (value <= 13)) {
+                value -= 7;
+            } else if ((value >= 16) && (value <= 21)) {
+                value -= 15;
+            } else {
+                value = 0;
+            }
+            sigQuality_t[na - 1][i] = value;
+        }
+        pl = pl->next;
+    }
 
     for (i = 0; i < MAX_NODE_CNT; i++) {
         buf[0] = 0;
@@ -578,6 +621,7 @@ void update_dvlp()
     int i, j;
     char buf[1024], temp[16];
     mac_state* hm_state;
+    node_s* node;
 
     msg.mtype = MMSG_MN_GUIIN;
     msg.node = 5;
@@ -591,11 +635,11 @@ void update_dvlp()
 
     i = 3;
     while (i--) {
+        usleep(500000);
         if (-1 == msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)) {
             if ((i < 2) && (i >= 0)) {
                 perror("update_dvlp:msgrcv hm_state failed, try again\n");
             }
-            usleep(500000);
         } else {
             break;
         }
@@ -629,13 +673,23 @@ void update_dvlp()
     printf("%s:vmode:%u\n", __func__, hm_state->vmode);
 #endif
 
+#if 0
     for (i = 0; i < config_cnt; i++) {
         if (strcmp(config_t[i].name, CNAME_MESHID) == 0) {
             sprintf(buf, "%u", hm_state->rfnt);
-            modify_value(&config_t[i].pvalue, buf);
-            break;
+            if (strcmp(buf, config_t[i].pvalue) == 0) {
+                break;
+            } else {
+                modify_value(&config_t[i].pvalue, buf);
+                node = search_node(config_root, CNAME_MESHID);
+                modify_value(&node->pvalue, buf);
+                gen_json(CONFIG_PATH, config_root);
+                gen_json(INIT_PATH, config_root);
+                break;
+            }
         }
     }
+#endif
 
     for (i = 0; i < dvlp_cnt; i++) {
         if (strcmp(dvlp_t[i].name, CNAME_NETSTATUS) == 0) {
@@ -812,7 +866,9 @@ int timer_add(const char* name, int intval, void (*pcb)(U32), U32 arg)
             strcpy(gts.procs[i].name, name);
             gts.procs[i].period = intval;
             gts.procs[i].wait = intval;
+#if PRINT_COMMAND
             fprintf(stderr, "add timer '%s' success, period = %ds\n", gts.procs[i].name, gts.procs[i].period);
+#endif
             gts.procs[i].pf = pcb;
             gts.procs[i].para = arg;
 
@@ -1191,6 +1247,7 @@ int cmp_config(rdata_s* rdata)
                         } else {
                             node = search_node(node, rdata->name);
                         }
+                        len = strlen(rdata->pvalue);
                         if (len > (int)strlen(node->pvalue)) {
                             free(node->pvalue);
                             node->pvalue = (char*)malloc(len + 1);
@@ -1405,7 +1462,9 @@ void* rcv_thread(void* arg)
                     goto thread_exit;
                 } else {
                     strcpy(node_ip, status_data[i].pvalue);
+#if PRINT_COMMAND
                     fprintf(stderr, "node_ip:%s\n", node_ip);
+#endif
                 }
             }
         }
@@ -1533,10 +1592,10 @@ void* rcv_thread(void* arg)
                     // }else{
                     //     update_time(pm->node, 15);
                     // }
-                    update_sig();
                     if (rval) {
                         fprintf(stderr, "%s,%d:update_node_status failed, rval = %d\n", __func__, __LINE__, rval);
                     } else {
+                        update_sig();
                         gen_json(STATUS_PATH, status_root);
                     }
                     pthread_mutex_unlock(&pmutex);

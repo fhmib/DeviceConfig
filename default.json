@@ -4,54 +4,54 @@
 		"Reset": "0"
 	},
 	"Main": {
-		"Node Id": "4",
-		"Node Name": "2WL-1608004",
-		"Mesh Id": "157",
-		"Centre Frequency": "1395",
-		"Channel Bandwidth": "5",
+		"NodeId": "4",
+		"NodeName": "2WL-1608004",
+		"MeshId": "157",
+		"CentreFrequency": "1395",
+		"ChannelBandwidth": "5",
 		"MCS": "255",
-		"Tx Power": "5",
-		"Mimo Mode": "0",
-		"IP Address": "192.168.0.4",
-		"Subnet Mask": "255.255.255.0",
+		"TxPower": "5",
+		"MimoMode": "0",
+		"IPAddress": "192.168.0.4",
+		"SubnetMask": "255.255.255.0",
 		"Gateway": "192.168.0.1"
 	},
 	"Audio": {
-		"Audio Mode": "1",
-		"Headphone Volume": "45",
-		"Microphone Volume": "45",
-		"Mute Threshold": "20"
+		"AudioMode": "1",
+		"HeadphoneVolume": "45",
+		"MicrophoneVolume": "45",
+		"MuteThreshold": "20"
 	},
-    "Serial Port": {
-        "Serial Port 0": {
-            "Baud Rate": "9600",
+    "SerialPort": {
+        "SerialPort0": {
+            "BaudRate": "9600",
             "Parity": "None",
-            "Data Width": "8",
-            "Stop Bits": "1"
+            "DataWidth": "8",
+            "StopBits": "1"
         }
     },
     "GPS": {
-		"GPS Mode": "1"
+		"GPSMode": "1"
 	},
-	"Static Route": {
-		"Static Route 0": {
-			"Network/Host IP Address": "0.0.0.0",
-			"Subnet Mask": "0.0.0.0",
+	"StaticRoute": {
+		"StaticRoute0": {
+			"Network/HostIPAddress": "0.0.0.0",
+			"SubnetMask": "0.0.0.0",
 			"Gateway": "0.0.0.0"
 		},
-		"Static Route 1": {
-			"Network/Host IP Address": "0.0.0.0",
-			"Subnet Mask": "0.0.0.0",
+		"StaticRoute1": {
+			"Network/HostIPAddress": "0.0.0.0",
+			"SubnetMask": "0.0.0.0",
 			"Gateway": "0.0.0.0"
 		},
-		"Static Route 2": {
-			"Network/Host IP Address": "0.0.0.0",
-			"Subnet Mask": "0.0.0.0",
+		"StaticRoute2": {
+			"Network/HostIPAddress": "0.0.0.0",
+			"SubnetMask": "0.0.0.0",
 			"Gateway": "0.0.0.0"
 		},
-		"Static Route 3": {
-			"Network/Host IP Address": "0.0.0.0",
-			"Subnet Mask": "0.0.0.0",
+		"StaticRoute3": {
+			"Network/HostIPAddress": "0.0.0.0",
+			"SubnetMask": "0.0.0.0",
 			"Gateway": "0.0.0.0"
 		}
 	}

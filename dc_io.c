@@ -26,19 +26,22 @@ extern pgps gpgll[];
 extern pgps gpgsa[];
 extern pgps gpgsv[];
 
+extern char port_flag[];
+extern char route_flag[];
+
 char buf_capvol[] = "/home/bin/amixer cset numid=90,iface=MIXER,name='Capture Volume' ";
 char buf_playvol[] = "/home/bin/amixer cset numid=108,iface=MIXER,name='Lineout Playback Volume' ";
 char buf_alcvol[] = "/home/bin/amixer cset numid=102,iface=MIXER,name='ALC Capture Noise Gate Threshold Volume' ";
 char buf_audio[] = "/home/rzxt_mesh/aaf0216/";
-
-extern char port_flag[];
-extern char route_flag[];
 
 //for configure uart
 int name_arr[] = { 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300 };
 
 //store the return address of function mmap()
 void* g_FPGA_pntr = NULL;
+
+//for store receiving msg from mn about route layer
+rtable_t rtable;
 
 /*
  * describe:
@@ -92,6 +95,144 @@ int io_readfrominfo(int index, char mode, char* pvalue)
             modify_value(&status_data[index].pvalue, info_t[i].pvalue);
             break;
         }
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_nodeHeader(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+
+/******************update rtable******************/
+        memset(&rtable, 0, sizeof(rtable_t));
+#if ON_BOARD
+        memset(&rtable.mtu, 255, sizeof(U8) * MAX_NODE_CNT);
+        read_route();
+#endif
+/******************update rtable******************/
+
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_getMtu(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i;
+    char buf[512], temp[16];
+
+    if (mode == 0) {
+        sprintf(buf, "[");
+        for (i = 0; i < MAX_NODE_CNT; i++) {
+            sprintf(temp, "%u%s", rtable.mtu[i] & 0x000000FF, (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            strcat(buf, temp);
+        }
+        // fprintf(stderr, "%s:%s\n", __func__, buf);
+        modify_value(&status_data[index].pvalue, buf);
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_getSnr(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i;
+    char buf[512], temp[16];
+
+    if (mode == 0) {
+        sprintf(buf, "[");
+        for (i = 0; i < MAX_NODE_CNT; i++) {
+            sprintf(temp, "%u%s", rtable.snr[i] & 0x000000FF, (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            strcat(buf, temp);
+        }
+        // fprintf(stderr, "%s:%s\n", __func__, buf);
+        modify_value(&status_data[index].pvalue, buf);
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_getNoise0(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i;
+    char buf[512], temp[16];
+
+    if (mode == 0) {
+        sprintf(buf, "[");
+        for (i = 0; i < MAX_NODE_CNT; i++) {
+            sprintf(temp, "%d%s", rtable.floor_noise[2 * i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            strcat(buf, temp);
+        }
+        // fprintf(stderr, "%s:%s\n", __func__, buf);
+        modify_value(&status_data[index].pvalue, buf);
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_getNoise1(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i;
+    char buf[512], temp[16];
+
+    if (mode == 0) {
+        sprintf(buf, "[");
+        for (i = 0; i < MAX_NODE_CNT; i++) {
+            sprintf(temp, "%d%s", rtable.floor_noise[2 * i + 1], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            strcat(buf, temp);
+        }
+        // fprintf(stderr, "%s:%s\n", __func__, buf);
+        modify_value(&status_data[index].pvalue, buf);
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_getDistance(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i;
+    char buf[512], temp[16];
+
+    if (mode == 0) {
+        sprintf(buf, "[");
+        for (i = 0; i < MAX_NODE_CNT; i++) {
+            sprintf(temp, "%d%s", rtable.distance[i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            strcat(buf, temp);
+        }
+        // fprintf(stderr, "%s:%s\n", __func__, buf);
+        modify_value(&status_data[index].pvalue, buf);
+    } else {
+        rval = 1;
+        goto func_exit;
     }
 
 func_exit:
@@ -1919,4 +2060,87 @@ func_exit:
         fclose(fp);
     }
     return rval;
+}
+
+void read_route()
+{
+    mmsg_t msg, rmsg;
+    mnhd_t* mnhd;
+    int len = 0;
+    int i;
+    route_info_t* rinfo;
+
+    msg.mtype = MMSG_MN_GUIIN;
+    msg.node = 5;
+    len += sizeof(msg.node);
+
+    mnhd = (mnhd_t*)msg.data;
+    mnhd->type = MN_REQ_ROUTE_TOP;
+    len += MNHD_LEN;
+
+    msgsnd(mn_qid, &msg, len, 0);
+
+    i = 3;
+    while (i--) {
+        usleep(500000);
+        if (-1 == msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)) {
+            if ((i < 2) && (i >= 0)) {
+                perror("update_dvlp:msgrcv hm_state failed, try again\n");
+            }
+        } else {
+            break;
+        }
+    }
+
+    //recv failed
+    if (i < 0) {
+        fprintf(stderr, "%s:error! msgrcv hm_state failed\n", __func__);
+        goto func_exit;
+    }
+
+    mnhd = (mnhd_t*)rmsg.data;
+    if (mnhd->type != MN_REP_ROUTE) {
+        fprintf(stderr, "%s:receive wrong type, type=%ld\n", __func__, mnhd->type);
+        goto func_exit;
+    }
+
+    rinfo = (route_info_t*)(rmsg.data + MNHD_LEN);
+    for (i = 0; i < MAX_NODE_CNT; i++) {
+        rtable.mtu[i] = rinfo->ct.item[sa - 1].cost[i].mtu;
+        rtable.snr[i] = rinfo->ct.item[sa - 1].cost[i].snr;
+        rtable.floor_noise[2 * i] = rinfo->phy.floor_noise[2 * i];
+        rtable.floor_noise[2 * i + 1] = rinfo->phy.floor_noise[2 * i + 1];
+        rtable.distance[i] = rinfo->phy.distance[i];
+    }
+
+    print_rtable();
+
+func_exit:
+    return;
+}
+
+void print_rtable()
+{
+    int i;
+
+    printf("\n<----------rtable---------->\n");
+    printf("mtu: ");
+    for (i = 0; i < MAX_NODE_CNT; i++) {
+        printf("%u%s", rtable.mtu[i] & 0x000000FF, (i != MAX_NODE_CNT - 1) ? ", " : "\n");
+    }
+    printf("snr: ");
+    for (i = 0; i < MAX_NODE_CNT; i++) {
+        printf("%u%s", rtable.snr[i] & 0x000000FF, (i != MAX_NODE_CNT - 1) ? ", " : "\n");
+    }
+    printf("floor_noise: ");
+    for (i = 0; i < MAX_NODE_CNT * 2; i++) {
+        printf("%u%s", rtable.floor_noise[i], (i != 2 * MAX_NODE_CNT - 1) ? ", " : "\n");
+    }
+    printf("distance: ");
+    for (i = 0; i < MAX_NODE_CNT; i++) {
+        printf("%u%s", rtable.distance[i], (i != MAX_NODE_CNT - 1) ? ", " : "\n");
+    }
+    printf("<---------- end  ---------->\n");
+
+    return;
 }
