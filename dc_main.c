@@ -122,6 +122,9 @@ sdata_s config_t[] = {
     { JSON_NORMAL, CNAME_FLAGS, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_CONFIG, NULL, NULL, CNAME_FLAGS, 1 },
     { JSON_STRING, CNAME_RESET, NULL, NULL, CNAME_FLAGS, 1 },
+    { JSON_NORMAL, CNAME_USER, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_USERNAME, NULL, &io_undo, CNAME_USER, 1 },
+    { JSON_STRING, CNAME_USERPASSWORD, NULL, &io_undo, CNAME_USER, 1 },
     { JSON_NORMAL, CNAME_MAIN, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_MAIN, 1 },
@@ -240,7 +243,7 @@ int main(int argc, char* argv[])
     timer_add("check config", 1, chk_config, 0);
     timer_add("check reset", 1, chk_reset, 0);
     timer_add("sub timeout", 2, sub_timeout, 0);
-    timer_add("ip status", 1, ip_status, 0);
+    timer_add("ip status", IPSTAT_FREQ, ip_status, 0);
 
     pthread_create(&tm_tid, NULL, timer_thread, &t_set);
     pthread_create(&rcv_tid, NULL, rcv_thread, NULL);
@@ -973,6 +976,7 @@ void chk_config(U32 arg)
     }
 
     if (0 == (strcmp("1", pd->pvalue))) {
+        fprintf(stderr, "%s:!!!!!config flag is setted to 1\n", __func__);
         rdata = read_json(CONFIG_PATH, NULL);
         mflag = cmp_config(rdata);
         gen_json(CONFIG_PATH, config_root);
@@ -1164,13 +1168,13 @@ void ip_status(U32 arg)
         }
     }
 
-    if ((pre_tv.tv_sec + pre_tv.tv_usec) != 0) {
-        rxbytes = now_rxbytes - pre_rxbytes;
-        rxpackets = now_rxpackets - pre_rxpackets;
-        rxerrors = now_rxerrors - pre_rxerrors;
-        txbytes = now_txbytes - pre_txbytes;
-        txpackets = now_txpackets - pre_txpackets;
-        txerrors = now_txerrors - pre_txerrors;
+    if (((pre_tv.tv_sec + pre_tv.tv_usec) != 0) && (pre_tv.tv_sec != now_tv.tv_sec)) {
+        rxbytes = (now_rxbytes - pre_rxbytes) / IPSTAT_FREQ;
+        rxpackets = (now_rxpackets - pre_rxpackets) / IPSTAT_FREQ;
+        rxerrors = (now_rxerrors - pre_rxerrors) / IPSTAT_FREQ;
+        txbytes = (now_txbytes - pre_txbytes) / IPSTAT_FREQ;
+        txpackets = (now_txpackets - pre_txpackets) / IPSTAT_FREQ;
+        txerrors = (now_txerrors - pre_txerrors) / IPSTAT_FREQ;
     }
 
     //printf("now_rx: %lld, %lld, %lld\n", now_rxbytes, now_rxpackets, now_rxerrors);
@@ -1579,10 +1583,14 @@ void* rcv_thread(void* arg)
                 recvfrom(infofd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
                 if (pm->type == SMSG_INFO) {
                     if (pm->node == sa) {
+#if PRINT_COMMAND
                         fprintf(stderr, "recv an info msg from myself, node %d, drop it\n", pm->node);
+#endif
                         continue;
                     }
+#if PRINT_COMMAND
                     fprintf(stderr, "recv an info msg from node %d\n", pm->node);
+#endif
                     //printf("msg:[%s]\n", pm->buf);
                     pthread_mutex_lock(&pmutex);
 
@@ -1716,7 +1724,7 @@ int send_info(int reqfd, void* cli)
             strcat(msg.buf, buf);
             break;
         case JSON_STRING:
-            if (status_data[i].pvalue == NULL)
+            if ((status_data[i].pvalue == NULL) || (strlen(status_data[i].pvalue) == 0))
                 break;
             sprintf(buf, "%s|", status_data[i].name);
             llen += strlen(buf);
@@ -1726,7 +1734,16 @@ int send_info(int reqfd, void* cli)
                 goto func_exit;
             }
             strcat(msg.buf, buf);
+#if SOCKET_TEST
+            if (strcmp(CNAME_NODEID, status_data[i].name) == 0) {
+                sprintf(test, "%d", (msg.node) & 0x000000FF);
+                sprintf(buf, "%s|", test);
+            } else {
+                sprintf(buf, "%s|", status_data[i].pvalue);
+            }
+#else
             sprintf(buf, "%s|", status_data[i].pvalue);
+#endif
             llen += strlen(buf);
             if (llen >= MAX_SOCK_LEN) {
                 rval = 1;
@@ -1818,6 +1835,7 @@ int update_node_status(int nodeid, char* pmsg)
                 } else if (sd.type == JSON_STRING) {
                     sd.pvalue = strtok(NULL, "|");
                     if (sd.pvalue == NULL) {
+                        fprintf(stderr, "%s: %s's pvalue is NULL\n", __func__, sd.name);
                         rval = 4;
                         goto func_exit;
                     }

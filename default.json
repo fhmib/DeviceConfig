@@ -3,6 +3,10 @@
 		"Config": "0",
 		"Reset": "0"
 	},
+	"User": {
+		"name": "admin",
+		"password": "21232f297a57a5a743894a0e4a801fc3"
+	},
 	"Main": {
 		"NodeId": "4",
 		"NodeName": "2WL-1608004",
@@ -22,35 +26,35 @@
 		"MicrophoneVolume": "45",
 		"MuteThreshold": "20"
 	},
-    "SerialPort": {
-        "SerialPort0": {
-            "BaudRate": "9600",
-            "Parity": "None",
-            "DataWidth": "8",
-            "StopBits": "1"
-        }
-    },
-    "GPS": {
+	"SerialPort": {
+		"SerialPort0": {
+			"BaudRate": "0",
+			"Parity": "0",
+			"DataWidth": "8",
+			"StopBits": "1"
+		}
+	},
+	"GPS": {
 		"GPSMode": "1"
 	},
 	"StaticRoute": {
 		"StaticRoute0": {
-			"Network/HostIPAddress": "0.0.0.0",
+			"IPAddress": "0.0.0.0",
 			"SubnetMask": "0.0.0.0",
 			"Gateway": "0.0.0.0"
 		},
 		"StaticRoute1": {
-			"Network/HostIPAddress": "0.0.0.0",
+			"IPAddress": "0.0.0.0",
 			"SubnetMask": "0.0.0.0",
 			"Gateway": "0.0.0.0"
 		},
 		"StaticRoute2": {
-			"Network/HostIPAddress": "0.0.0.0",
+			"IPAddress": "0.0.0.0",
 			"SubnetMask": "0.0.0.0",
 			"Gateway": "0.0.0.0"
 		},
 		"StaticRoute3": {
-			"Network/HostIPAddress": "0.0.0.0",
+			"IPAddress": "0.0.0.0",
 			"SubnetMask": "0.0.0.0",
 			"Gateway": "0.0.0.0"
 		}

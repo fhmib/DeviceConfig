@@ -35,9 +35,17 @@
 #define PRINT_COMMAND               1
 #define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
 
+#define IPSTAT_FREQ                 3
+
+#if ON_BOARD
+#define STATUS_PATH                 "/etc/boa/status.json"
+#define CONFIG_PATH                 "/etc/boa/config.json"
+#define INIT_PATH                   "/etc/boa/init.json"
+#else
 #define STATUS_PATH                 "status.json"
 #define CONFIG_PATH                 "config.json"
 #define INIT_PATH                   "init.json"
+#endif
 #define DEFAULT_PATH                "default.json"
 #define XD_INIT_PATH                "init.sh"
 #define XD_CONFIG_PATH              "config.ini"
@@ -105,6 +113,9 @@
 #define CNAME_RESET                 "Reset"
 #define CNAME_MAIN                  "Main"
 #define CNAME_AUDIO                 "Audio"
+#define CNAME_USER                  "User"
+#define CNAME_USERNAME              "name"
+#define CNAME_USERPASSWORD          "password"
 #define CNAME_DATAPORT              "SerialPort"
 #define CNAME_DATAPORT0             "SerialPort0"
 #define CNAME_GPS                   "GPS"
@@ -150,7 +161,8 @@
 #define CNAME_GPSHEIGHT             "Altitude"
 #define CNAME_GPSTYPE               "AlignType"
 
-#define CNAME_ROUTEADDR             "Network/HostIPAddress"
+//#define CNAME_ROUTEADDR             "Network/HostIPAddress"
+#define CNAME_ROUTEADDR             "IPAddress"
 #define CNAME_ROUTEMASK             "SubnetMask"
 #define CNAME_ROUTEGATE             "Gateway"
 /*
@@ -179,7 +191,7 @@
 #define CNAME_TBS                   "TBSAddress"
 #define CNAME_UPS                   "UPSAddress"
 #define CNAME_CLOCK                 "ClockLevel"
-#define CNAME_SLOTCNT               "NumberOfSlots"
+#define CNAME_SLOTCNT               "NumberofSlots"
 #define CNAME_L2BNUM                "BBTxPackets"
 #define CNAME_B2LNUM                "BBRxPackets"
 #define CNAME_BBSFNUM               "ServiceFrame"

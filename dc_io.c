@@ -107,13 +107,13 @@ int io_nodeHeader(int index, char mode, char* pvalue)
 
     if (mode == 0) {
 
-/******************update rtable******************/
+        /******************update rtable******************/
         memset(&rtable, 0, sizeof(rtable_t));
 #if ON_BOARD
         memset(&rtable.mtu, 255, sizeof(U8) * MAX_NODE_CNT);
         read_route();
 #endif
-/******************update rtable******************/
+        /******************update rtable******************/
 
     } else {
         rval = 1;
@@ -939,6 +939,26 @@ int io_dataRate(int index, char mode, char* pvalue)
     } else {
         //fprintf(stderr, "%s:%d\n", __func__, i);
         sscanf(pvalue, "%d", &value);
+        switch (value) {
+        case 0:
+            value = 9600;
+            break;
+        case 1:
+            value = 19200;
+            break;
+        case 2:
+            value = 38400;
+            break;
+        case 3:
+            value = 57600;
+            break;
+        case 4:
+            value = 115200;
+            break;
+        default:
+            value = 0;
+            break;
+        }
         cnt = sizeof(name_arr) / sizeof(int);
         for (i = 0; i < cnt; i++) {
             if (value == name_arr[i]) {
@@ -965,18 +985,33 @@ func_exit:
 int io_dataParity(int index, char mode, char* pvalue)
 {
     int rval = 0;
-    int i;
+    int i, value;
+    char str[8];
 
     if (mode == 0) {
         rval = 1;
         goto func_exit;
     } else {
         //fprintf(stderr, "%s:%d\n", __func__, i);
-        if ((strcmp(pvalue, "Odd") != 0) && (strcmp(pvalue, "Even") != 0)
-            && (strcmp(pvalue, "None") != 0) && (strcmp(pvalue, "odd") != 0)
-            && (strcmp(pvalue, "even") != 0) && (strcmp(pvalue, "none") != 0)
-            && (strcmp(pvalue, "ODD") != 0) && (strcmp(pvalue, "EVEN") != 0)
-            && (strcmp(pvalue, "NONE") != 0)) {
+        sscanf(pvalue, "%d", &value);
+        switch (value) {
+        case 0:
+            sprintf(str, "None");
+            break;
+        case 1:
+            sprintf(str, "Odd");
+            break;
+        case 2:
+            sprintf(str, "Even");
+            break;
+        default:
+            break;
+        }
+        if ((strcmp(str, "Odd") != 0) && (strcmp(str, "Even") != 0)
+            && (strcmp(str, "None") != 0) && (strcmp(str, "odd") != 0)
+            && (strcmp(str, "even") != 0) && (strcmp(str, "none") != 0)
+            && (strcmp(str, "ODD") != 0) && (strcmp(str, "EVEN") != 0)
+            && (strcmp(str, "NONE") != 0)) {
             rval = 2;
             goto func_exit;
         } else {
@@ -1503,9 +1538,10 @@ int config_uart(int which)
 {
     int rval = 0;
     int fd = -1;
-    int i;
-    int speed, dataw, stopb;
-    char *port_path, *sparity;
+    int i, j, cnt;
+    int speed, dataw, stopb, iparity;
+    char *port_path;
+    char sparity[8];
     char parity;
 
     switch (which) {
@@ -1515,9 +1551,55 @@ int config_uart(int which)
         for (i = 0; i < config_cnt; i++) {
             if ((strcmp(config_t[i].name, CNAME_UARTRATE) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 sscanf(config_t[i].pvalue, "%d", &speed);
+                switch (speed) {
+                case 0:
+                    speed = 9600;
+                    break;
+                case 1:
+                    speed = 19200;
+                    break;
+                case 2:
+                    speed = 38400;
+                    break;
+                case 3:
+                    speed = 57600;
+                    break;
+                case 4:
+                    speed = 115200;
+                    break;
+                default:
+                    speed = 0;
+                    break;
+                }
+                cnt = sizeof(name_arr) / sizeof(int);
+                for (j = 0; j < cnt; j++) {
+                    if (speed == name_arr[j]) {
+                        break;
+                    }
+                }
+
+                if (j >= cnt) {
+                    rval = 2;
+                    goto func_exit;
+                }
+
             } else if ((strcmp(config_t[i].name, CNAME_UARTPARITY) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 //fprintf(stderr, "%s\n", config_t[i].pvalue);
-                sparity = config_t[i].pvalue;
+                // sparity = config_t[i].pvalue;
+                sscanf(config_t[i].pvalue, "%d", &iparity);
+                switch (iparity) {
+                case 0:
+                    sprintf(sparity, "None");
+                    break;
+                case 1:
+                    sprintf(sparity, "Odd");
+                    break;
+                case 2:
+                    sprintf(sparity, "Even");
+                    break;
+                default:
+                    break;
+                }
             } else if ((strcmp(config_t[i].name, CNAME_UARTDATAWIDTH) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 //fprintf(stderr, "%s\n", config_t[i].pvalue);
                 sscanf(config_t[i].pvalue, "%d", &dataw);
