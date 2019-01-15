@@ -34,6 +34,7 @@ typedef struct _ctable_t {
 typedef struct _phy_info_t {
     U32 floor_noise[2 * MAX_NODE_CNT];
     U32 distance[MAX_NODE_CNT];
+    U32 rssi[2 * MAX_NODE_CNT];
 } phy_info_t;
 
 typedef struct _route_info_t {
@@ -46,6 +47,7 @@ typedef struct _rtable_t{
     U8 snr[MAX_NODE_CNT];
     U32 floor_noise[2*MAX_NODE_CNT];
     U32 distance[MAX_NODE_CNT];
+    U32 rssi[2 * MAX_NODE_CNT];
 }rtable_t;
 
 int io_undo(int, char, char*);
@@ -58,6 +60,8 @@ int io_getSnr(int, char, char*);
 int io_getNoise0(int, char, char*);
 int io_getNoise1(int, char, char*);
 int io_getDistance(int, char, char*);
+int io_getRSSI0(int, char, char*);
+int io_getRSSI1(int, char, char*);
 int io_macAddr(int, char, char*);
 
 int io_ipTxByteCnt(int, char, char*);

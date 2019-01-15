@@ -239,6 +239,52 @@ func_exit:
     return rval;
 }
 
+int io_getRSSI0(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i;
+    char buf[512], temp[16];
+
+    if (mode == 0) {
+        sprintf(buf, "[");
+        for (i = 0; i < MAX_NODE_CNT; i++) {
+            sprintf(temp, "%d%s", rtable.rssi[2 * i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            strcat(buf, temp);
+        }
+        // fprintf(stderr, "%s:%s\n", __func__, buf);
+        modify_value(&status_data[index].pvalue, buf);
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_getRSSI1(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int i;
+    char buf[512], temp[16];
+
+    if (mode == 0) {
+        sprintf(buf, "[");
+        for (i = 0; i < MAX_NODE_CNT; i++) {
+            sprintf(temp, "%d%s", rtable.rssi[2 * i + 1], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            strcat(buf, temp);
+        }
+        // fprintf(stderr, "%s:%s\n", __func__, buf);
+        modify_value(&status_data[index].pvalue, buf);
+    } else {
+        rval = 1;
+        goto func_exit;
+    }
+
+func_exit:
+    return rval;
+}
+
 int io_macAddr(int index, char mode, char* pvalue)
 {
     struct ifaddrs *ifa, *ifaddr = NULL;
@@ -1540,7 +1586,7 @@ int config_uart(int which)
     int fd = -1;
     int i, j, cnt;
     int speed, dataw, stopb, iparity;
-    char *port_path;
+    char* port_path;
     char sparity[8];
     char parity;
 
@@ -2165,7 +2211,7 @@ void read_route()
     i = 3;
     while (i--) {
         usleep(500000);
-        if (-1 == msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)) {
+        if ((len = msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)) == -1) {
             if ((i < 2) && (i >= 0)) {
                 perror("update_dvlp:msgrcv hm_state failed, try again\n");
             }
@@ -2185,6 +2231,7 @@ void read_route()
         fprintf(stderr, "%s:receive wrong type, type=%ld\n", __func__, mnhd->type);
         goto func_exit;
     }
+    // fprintf(stderr, "%s:len=%d\n", __func__, len);
 
     rinfo = (route_info_t*)(rmsg.data + MNHD_LEN);
     for (i = 0; i < MAX_NODE_CNT; i++) {
@@ -2193,6 +2240,8 @@ void read_route()
         rtable.floor_noise[2 * i] = rinfo->phy.floor_noise[2 * i];
         rtable.floor_noise[2 * i + 1] = rinfo->phy.floor_noise[2 * i + 1];
         rtable.distance[i] = rinfo->phy.distance[i];
+        rtable.rssi[2 * i] = rinfo->phy.rssi[2 * i];
+        rtable.rssi[2 * i + 1] = rinfo->phy.rssi[2 * i + 1];
     }
 
     print_rtable();
@@ -2221,6 +2270,10 @@ void print_rtable()
     printf("distance: ");
     for (i = 0; i < MAX_NODE_CNT; i++) {
         printf("%u%s", rtable.distance[i], (i != MAX_NODE_CNT - 1) ? ", " : "\n");
+    }
+    printf("rssi: ");
+    for (i = 0; i < MAX_NODE_CNT * 2; i++) {
+        printf("%u%s", rtable.rssi[i], (i != 2 * MAX_NODE_CNT - 1) ? ", " : "\n");
     }
     printf("<---------- end  ---------->\n");
 

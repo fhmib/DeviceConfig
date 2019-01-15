@@ -31,7 +31,7 @@
 #define U32                         unsigned int
 #define U64                         unsigned long long
 
-#define ON_BOARD                    0
+#define ON_BOARD                    1
 #define PRINT_COMMAND               1
 #define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
 
@@ -195,6 +195,11 @@
 #define CNAME_L2BNUM                "BBTxPackets"
 #define CNAME_B2LNUM                "BBRxPackets"
 #define CNAME_BBSFNUM               "ServiceFrame"
+#define CNAME_LMRETX                "ReTxCount"
+#define CNAME_TXFAIL                "TxFailCount"
+#define CNAME_FORWARD               "ForwardingCount"
+#define CNAME_MAXTXBYTE             "MaxTxByte"
+#define CNAME_ACTUALTXBYTE          "ActualTxByte"
 #define CNAME_VMODE                 "MCSMode"
 #define CNAME_FSTABLE               "FixedSlots"
 #define CNAME_DSTABLE               "DynamicSlots"
@@ -204,6 +209,8 @@
 #define CNAME_NOISE0                "Noise0"
 #define CNAME_NOISE1                "Noise1"
 #define CNAME_DISTANCE              "Distance"
+#define CNAME_RSSI0                 "RSSI0"
+#define CNAME_RSSI1                 "RSSI1"
 
 //#define JSON_BRACKET                0
 //#define JSON_NORMAL                 1
@@ -337,6 +344,11 @@ typedef struct _mac_state {
     U16 l2bnum;
     U16 b2lnum;
     U16 sfb2l;
+    U16 lretxnum; /* lowmac retx num add 2019 01 14 */
+    U16 ltxfailnum; /* lowmac tx fail num 2019 01 14 */
+    U16 laafnum; /* lowmac aaf num 2019 01 14 */
+    U16 ltxmaxlen; /* lowmac tx max len(bytes number) 2019 01 14 */
+    U16 ltxinresultlen; /* lowmac tx len(bytes number)in result 2019 01 14 */
     U8 dsmap[55];
     U8 vmode;
 } mac_state;

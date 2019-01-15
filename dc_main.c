@@ -54,6 +54,8 @@ sdata_s status_data[] = {
     { JSON_STRING, CNAME_NOISE0, NULL, &io_getNoise0, CNAME_NODEHEADER, 0 },
     { JSON_STRING, CNAME_NOISE1, NULL, &io_getNoise1, CNAME_NODEHEADER, 0 },
     { JSON_STRING, CNAME_DISTANCE, NULL, &io_getDistance, CNAME_NODEHEADER, 0 },
+    { JSON_STRING, CNAME_RSSI0, NULL, &io_getRSSI0, CNAME_NODEHEADER, 0 },
+    { JSON_STRING, CNAME_RSSI1, NULL, &io_getRSSI1, CNAME_NODEHEADER, 0 },
     { JSON_NORMAL, CNAME_IPSTATUS, NULL, NULL, CNAME_NOTDEF, 1 },
     { JSON_STRING, CNAME_IPTXBYTE, NULL, &io_ipTxByteCnt, CNAME_IPSTATUS, 1 },
     { JSON_STRING, CNAME_IPTXPKT, NULL, &io_ipTxPktCnt, CNAME_IPSTATUS, 1 },
@@ -99,6 +101,11 @@ sdata_s dvlp_t[] = {
     { JSON_STRING, CNAME_L2BNUM, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_B2LNUM, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_BBSFNUM, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_LMRETX, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_TXFAIL, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_FORWARD, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_MAXTXBYTE, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_ACTUALTXBYTE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_VMODE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_FSTABLE, NULL, NULL, CNAME_NULL, 0 },
     { JSON_STRING, CNAME_DSTABLE, NULL, NULL, CNAME_NULL, 0 },
@@ -738,6 +745,21 @@ void update_dvlp()
             modify_value(&dvlp_t[i].pvalue, buf);
         } else if (strcmp(dvlp_t[i].name, CNAME_BBSFNUM) == 0) {
             sprintf(buf, "%u", hm_state->sfb2l);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_LMRETX) == 0) {
+            sprintf(buf, "%u", hm_state->lretxnum);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_TXFAIL) == 0) {
+            sprintf(buf, "%u", hm_state->ltxfailnum);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_FORWARD) == 0) {
+            sprintf(buf, "%u", hm_state->laafnum);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_MAXTXBYTE) == 0) {
+            sprintf(buf, "%u", hm_state->ltxmaxlen);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_ACTUALTXBYTE) == 0) {
+            sprintf(buf, "%u", hm_state->ltxinresultlen);
             modify_value(&dvlp_t[i].pvalue, buf);
         } else if (strcmp(dvlp_t[i].name, CNAME_VMODE) == 0) {
             sprintf(buf, "%u", hm_state->vmode);
@@ -1684,14 +1706,14 @@ int send_info(int reqfd, void* cli)
     smsg_t msg;
     int len = 0, llen = 0, i;
     int rval = 0;
-    char buf[256];
+    char buf[1024];
 
     ((struct sockaddr_in*)cli)->sin_port = htons(INFO_PORT);
 
 #if SOCKET_TEST
     msg.node = sa + 1;
     msg.node = (msg.node > MAX_NODE_CNT) ? 1 : msg.node;
-    char test[64];
+    char test[128];
 #else
     msg.node = sa;
 #endif
@@ -1701,6 +1723,7 @@ int send_info(int reqfd, void* cli)
 
     msg.buf[0] = 0;
     for (i = 0; i < status_cnt; i++) {
+        // fprintf(stderr, "%s:%d: status_data's name is %s\n", __func__, __LINE__, status_data[i].name);
         switch (status_data[i].type) {
         case JSON_NORMAL:
         case JSON_ARRAY:
