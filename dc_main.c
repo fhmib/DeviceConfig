@@ -26,6 +26,11 @@ node_s* snode_data[MAX_NODE_CNT];
 //genernal timers for process
 static timers_s gts;
 
+//indecate whether wifi is enabled
+char wifi_mode = 0; //indicate whether wifi is enabled
+char wifi_mod = 1; //indicate whether wifi mode is changed.
+char wifi_restart = 0; //indecate whether wifi need restart
+
 #if 0
 //read-only data
 //absoleted
@@ -149,6 +154,15 @@ sdata_s config_t[] = {
     { JSON_STRING, CNAME_AUDIOPLAY, NULL, &io_audioVol, CNAME_AUDIO, 1 },
     { JSON_STRING, CNAME_AUDIOMIC, NULL, &io_audioVol, CNAME_AUDIO, 1 },
     { JSON_STRING, CNAME_AUDIOALC, NULL, &io_audioVol, CNAME_AUDIO, 1 },
+    { JSON_NORMAL, CNAME_WIFI, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_WIFIMODE, NULL, &io_wifimode, CNAME_WIFI, 1 },
+    { JSON_STRING, CNAME_WIFIIP, NULL, &io_wifiip, CNAME_WIFI, 1 },
+    { JSON_STRING, CNAME_WIFIENCRY, NULL, &io_wifimod, CNAME_WIFI, 1 },
+    { JSON_STRING, CNAME_WIFISSID, NULL, &io_wifimod, CNAME_WIFI, 1 },
+    { JSON_STRING, CNAME_WIFIPW, NULL, &io_wifimod, CNAME_WIFI, 1 },
+    { JSON_STRING, CNAME_WIFIBW, NULL, &io_wifimod, CNAME_WIFI, 1 },
+    { JSON_STRING, CNAME_WIFICHAN, NULL, &io_wifichannel, CNAME_WIFI, 1 },
+    { JSON_STRING, CNAME_WIFITXPOWER, NULL, &io_wifimod, CNAME_WIFI, 1 },
     { JSON_NORMAL, CNAME_DATAPORT, NULL, NULL, CNAME_NULL, 1 },
     { JSON_NORMAL, CNAME_DATAPORT0, NULL, NULL, CNAME_DATAPORT, 1 },
     { JSON_STRING, CNAME_UARTRATE, NULL, &io_dataRate, CNAME_DATAPORT0, 1 },
@@ -1101,6 +1115,7 @@ void sub_timeout(U32 arg)
                 (timeout[i])--;
                 if (timeout[i] == 0) {
                     remove_status(i + 1);
+                    update_sig();
                     wflag++;
                 }
             }
@@ -1326,6 +1341,11 @@ int add_config()
         }
     }
 
+    if(wifi_mod == 1){
+        config_wifi();
+        wifi_mod = 0;
+    }
+
 func_exit:
     return rval;
 }
@@ -1428,7 +1448,7 @@ void insert_status_2tree(int nodeid, node_s* node)
 
 /*
  * func:
- *      remove all status infomation without 'timeout'
+ *      remove all status infomation
  * params:
  *      nodeid:         node id, not index.
  */

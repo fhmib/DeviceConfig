@@ -105,6 +105,13 @@ int io_route(int, char, char*);
 int io_audioEnable(int, char, char*);
 int io_audioVol(int, char, char*);
 
+int io_wifimode(int, char, char*);
+int io_wifimod(int, char, char*);
+int io_wifiip(int, char, char*);
+int io_wifichannel(int, char, char*);
+
+int update_wifi();
+void config_wifi();
 int modify_ini(const char*, const char*, const char*);
 int modify_file(const char*, const char*, const char*, const char*, const char*);
 int file_size(const char*);

@@ -26,6 +26,16 @@
 		"MicrophoneVolume": "45",
 		"MuteThreshold": "20"
 	},
+	"Wifi":{
+		"Mode": "0",
+		"SSID": "rzxt123",
+		"APAddress": "192.168.2.100",
+		"Encryption": "2",
+		"Password": "12348765",
+		"Bandwidth": "3",
+		"Channel": "1",
+		"TxPower": "18"
+	},
 	"SerialPort": {
 		"SerialPort0": {
 			"BaudRate": "0",

@@ -26,6 +26,10 @@ extern pgps gpgll[];
 extern pgps gpgsa[];
 extern pgps gpgsv[];
 
+extern char wifi_mode;
+extern char wifi_mod;
+extern char wifi_restart;
+
 extern char port_flag[];
 extern char route_flag[];
 
@@ -691,7 +695,7 @@ int io_ipAddress(int index, char mode, char* pvalue)
     int rval = 0;
     int i;
     char buf[16];
-    char wbuf[64];
+    char wbuf[128];
     char* paudio;
     struct ifaddrs *ifaddr, *ifa;
     struct sockaddr_in* ifinfo;
@@ -1188,7 +1192,7 @@ int io_audioEnable(int index, char mode, char* pvalue)
     } else if (mode == 2) {
         sscanf(pvalue, "%d", &value);
         if (value != 0) {
-            sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
+            sprintf(buf, "%s" AUDIO_NAME " %d &", buf_audio, sa);
             // usleep(100000);
 
 #if PRINT_COMMAND
@@ -1211,7 +1215,7 @@ int io_audioEnable(int index, char mode, char* pvalue)
     } else if (mode == 1) {
         sscanf(pvalue, "%d", &value);
         if (value != 0) {
-            sprintf(buf, "%s" AUDIO_NAME " %d", buf_audio, sa);
+            sprintf(buf, "%s" AUDIO_NAME " %d &", buf_audio, sa);
             // usleep(100000);
 
 #if PRINT_COMMAND
@@ -1269,6 +1273,212 @@ int io_audioVol(int index, char mode, char* pvalue)
 
 func_exit:
     return rval;
+}
+
+int io_wifimode(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int value;
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        sscanf(pvalue, "%d", &value);
+        wifi_mode = value;
+        wifi_mod = 1;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_wifimod(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        wifi_mod = 1;
+        wifi_restart = 1;
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_wifiip(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    char buf[64];
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        //excute config channel command
+        sprintf(buf, "ifconfig " WIFI_NAME " %s", pvalue);
+#if PRINT_COMMAND
+        fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+        system(buf);
+#endif
+    }
+
+func_exit:
+    return rval;
+}
+
+int io_wifichannel(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    char buf[64];
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        //excute config channel command
+        sprintf(buf, "iwconfig " WIFI_NAME " channel %s", pvalue);
+#if PRINT_COMMAND
+        fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+        system(buf);
+#endif
+    }
+
+func_exit:
+    return rval;
+}
+
+int update_wifi()
+{
+    int rval = 0;
+    int value;
+    int enc;
+    int i, i_wifi;
+    char* file_path = NULL;
+    char *pssid, *pip, *ppw, *pch, *pbw, *ptp;
+
+    file_path = (char*)malloc(64);
+
+    for (i = 0; i < config_cnt; i++) {
+        if (strcmp(config_t[i].name, CNAME_WIFISSID) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
+            pssid = config_t[i].pvalue;
+        } else if (strcmp(config_t[i].name, CNAME_WIFIIP) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
+            pip = config_t[i].pvalue;
+        } else if (strcmp(config_t[i].name, CNAME_WIFIPW) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
+            ppw = config_t[i].pvalue;
+        } else if (strcmp(config_t[i].name, CNAME_WIFICHAN) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
+            pch = config_t[i].pvalue;
+        } else if (strcmp(config_t[i].name, CNAME_WIFIBW) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
+            pbw = config_t[i].pvalue;
+        } else if (strcmp(config_t[i].name, CNAME_WIFITXPOWER) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
+            ptp = config_t[i].pvalue;
+        } else if (strcmp(config_t[i].name, CNAME_WIFIENCRY) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
+            sscanf(config_t[i].pvalue, "%d", &enc);
+            switch (enc) {
+            case 0:
+                strcpy(file_path, WIFI_PATH_OPEN);
+                break;
+            case 1:
+                strcpy(file_path, WIFI_PATH_TKIP);
+                break;
+            case 2:
+                strcpy(file_path, WIFI_PATH_CCMP);
+                break;
+            case 3:
+                strcpy(file_path, WIFI_PATH_WEP64);
+                break;
+            case 4:
+                strcpy(file_path, WIFI_PATH_WEP128);
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    //update ssid
+    modify_file(file_path, "ssid", "ssid=\"", "\"", pssid);
+
+    //update ipaddress
+    modify_file(WIFI_PATH_AP, "ifconfig " WIFI_NAME, WIFI_NAME " ", NULL, pip);
+
+    //update password
+    switch (enc) {
+    case 0:
+        break;
+    case 1:
+    case 2:
+        modify_file(file_path, "psk=", "psk=\"", "\"", ppw);
+        break;
+    case 3:
+    case 4:
+        modify_file(file_path, "wep_key0=", "wep_key0=", NULL, ppw);
+        break;
+    default:
+        break;
+    }
+
+    //update enctyption
+    modify_file(WIFI_PATH_AP, "start_ap.sh ", "start_ap.sh ", NULL, file_path);
+
+    //update channel
+    if (strcmp(pbw, "2") == 0) {
+        modify_value(&pch, "1");
+    }
+    modify_file(WIFI_PATH_AP, "iwconfig " WIFI_NAME " channel", "channel ", NULL, pch);
+
+    //update bandwidth
+    modify_file(WIFI_PATH_SAP, "set_htconf ", "set_htconf ", NULL, pbw);
+
+    //update tx power
+    sscanf(ptp, "%d", &value);
+    if (value > 30 && value < 0) {
+        modify_file(WIFI_PATH_SAP, "txpower ", "txpower ", NULL, " ");
+    } else {
+        modify_file(WIFI_PATH_SAP, "txpower ", "txpower ", NULL, ptp);
+    }
+
+func_exit:
+    if (file_path != NULL) {
+        free(file_path);
+    }
+    return rval;
+}
+
+void config_wifi()
+{
+    char buf[128];
+
+#if ON_BOARD
+    update_wifi();
+#endif
+
+    if (wifi_mode == 1) {
+        sprintf(buf, "/home/wifi/ap.sh");
+#if PRINT_COMMAND
+        fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+        system(buf);
+#endif
+    } else if (wifi_mode == 0) {
+        strcpy(buf, WIFI_PATH_SHUTDOWN);
+#if PRINT_COMMAND
+        fprintf(stderr, "%s\n", buf);
+#endif
+#if ON_BOARD
+        system(buf);
+#endif
+    }
+
+    return;
 }
 
 /*

@@ -33,19 +33,18 @@
 
 #define ON_BOARD                    1
 #define PRINT_COMMAND               1
-#define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
+#define SOCKET_TEST                 0       //means local test, it will send socket with msg.node=(sa+1)
 
 #define IPSTAT_FREQ                 3
 
 #if ON_BOARD
 #define STATUS_PATH                 "/etc/boa/status.json"
 #define CONFIG_PATH                 "/etc/boa/config.json"
-#define INIT_PATH                   "/etc/boa/init.json"
 #else
 #define STATUS_PATH                 "status.json"
 #define CONFIG_PATH                 "config.json"
-#define INIT_PATH                   "init.json"
 #endif
+#define INIT_PATH                   "init.json"
 #define DEFAULT_PATH                "default.json"
 #define XD_INIT_PATH                "init.sh"
 #define XD_CONFIG_PATH              "config.ini"
@@ -56,8 +55,17 @@
 #define KEY_PATH                    "/etc/profile"
 #define VOLTAGE_PATH                "/sys/bus/iio/devices/iio:device0/in_voltage8_raw"
 #define TEMP_PATH                   "/sys/bus/iio/devices/iio:device0/in_temp0_raw"
+#define WIFI_PATH_AP                "/home/wifi/ap.sh"
+#define WIFI_PATH_SAP               "/home/wifi/release/start_ap.sh"
+#define WIFI_PATH_SHUTDOWN              "/home/wifi/release/remove_all.sh"
+#define WIFI_PATH_OPEN              "/home/wifi/release/wpa_supplicant_open.conf"
+#define WIFI_PATH_TKIP              "/home/wifi/release/wpa_supplicant_tkip.conf"
+#define WIFI_PATH_CCMP              "/home/wifi/release/wpa_supplicant_ccmp.conf"
+#define WIFI_PATH_WEP64             "/home/wifi/release/wpa_supplicant_wep64.conf"
+#define WIFI_PATH_WEP128            "/home/wifi/release/wpa_supplicant_wep128.conf"
+#define WIFI_NAME                   "wifi1"
 #if ON_BOARD
-#define NET_DEV_NAME                "eth0"
+#define NET_DEV_NAME                "br0"
 #else
 #define NET_DEV_NAME                "ens33"
 #endif
@@ -145,6 +153,16 @@
 #define CNAME_UARTPARITY            "Parity"
 #define CNAME_UARTDATAWIDTH         "DataWidth"
 #define CNAME_UARTSTOP              "StopBits"
+
+#define CNAME_WIFI                  "Wifi"
+#define CNAME_WIFIMODE              "Mode"
+#define CNAME_WIFIIP                "IPAddress"
+#define CNAME_WIFIENCRY             "Encryption"
+#define CNAME_WIFISSID              "SSID"
+#define CNAME_WIFIPW                "Password"
+#define CNAME_WIFIBW                "Bandwidth"
+#define CNAME_WIFICHAN              "Channel"
+#define CNAME_WIFITXPOWER           "TxPower"
 
 #define CNAME_GPSENABLE             "GPSMode"
 #define CNAME_GPSUTCTIME            "UTCTime"
