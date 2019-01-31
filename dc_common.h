@@ -31,9 +31,9 @@
 #define U32                         unsigned int
 #define U64                         unsigned long long
 
-#define ON_BOARD                    1
+#define ON_BOARD                    0
 #define PRINT_COMMAND               1
-#define SOCKET_TEST                 0       //means local test, it will send socket with msg.node=(sa+1)
+#define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
 
 #define IPSTAT_FREQ                 3
 
@@ -119,6 +119,7 @@
 #define CNAME_OL                    "Online"
 #define CNAME_CONFIG                "Config"
 #define CNAME_RESET                 "Reset"
+#define CNAME_RESTART               "Restart"
 #define CNAME_MAIN                  "Main"
 #define CNAME_AUDIO                 "Audio"
 #define CNAME_USER                  "User"
@@ -137,6 +138,7 @@
 #define CNAME_VOLTAGE               "SupplyVoltage"
 #define CNAME_TEMP                  "FPGATemperature"
 #define CNAME_MESHID                "MeshId"
+#define CNAME_SOPINT                "SopInterval"
 #define CNAME_FREQ                  "CentreFrequency"
 #define CNAME_CHANBW                "ChannelBandwidth"
 #define CNAME_TFCI                  "MCS"

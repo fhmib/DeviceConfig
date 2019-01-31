@@ -106,7 +106,7 @@ sdata_s dvlp_t[] = {
     { JSON_STRING, CNAME_L2BNUM, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_B2LNUM, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_BBSFNUM, NULL, NULL, CNAME_NULL, 1 },
-    { JSON_STRING, CNAME_LMRETX, NULL, NULL, CNAME_NULL, 1 },
+    // { JSON_STRING, CNAME_LMRETX, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_TXFAIL, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_FORWARD, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_MAXTXBYTE, NULL, NULL, CNAME_NULL, 1 },
@@ -134,13 +134,15 @@ sdata_s config_t[] = {
     { JSON_NORMAL, CNAME_FLAGS, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_CONFIG, NULL, NULL, CNAME_FLAGS, 1 },
     { JSON_STRING, CNAME_RESET, NULL, NULL, CNAME_FLAGS, 1 },
+    { JSON_STRING, CNAME_RESTART, NULL, NULL, CNAME_FLAGS, 1 },
     { JSON_NORMAL, CNAME_USER, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_USERNAME, NULL, &io_undo, CNAME_USER, 1 },
     { JSON_STRING, CNAME_USERPASSWORD, NULL, &io_undo, CNAME_USER, 1 },
     { JSON_NORMAL, CNAME_MAIN, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_MAIN, 1 },
-    { JSON_STRING, CNAME_MESHID, NULL, NULL, CNAME_MAIN, 1 },
+    { JSON_STRING, CNAME_MESHID, NULL, &io_meshid, CNAME_MAIN, 1 },
+    { JSON_STRING, CNAME_SOPINT, NULL, &io_sopinterval, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_FREQ, NULL, NULL, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_CHANBW, NULL, &io_chanBW, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_TFCI, NULL, &io_tfci, CNAME_MAIN, 1 },
@@ -659,25 +661,25 @@ void update_dvlp()
 
     i = 3;
     while (i--) {
-        usleep(500000);
+        usleep(100000);
         if (-1 == msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)) {
             if ((i < 2) && (i >= 0)) {
                 perror("update_dvlp:msgrcv hm_state failed, try again\n");
             }
         } else {
-            break;
+            mnhd = (mnhd_t*)rmsg.data;
+            if (mnhd->type != MN_REP_MAC) {
+                fprintf(stderr, "%s:receive wrong type, type=%ld\n", __func__, mnhd->type);
+                continue;
+            } else {
+                break;
+            }
         }
     }
 
     //recv failed
     if (i < 0) {
         fprintf(stderr, "%s:error! msgrcv hm_state failed\n", __func__);
-        goto func_exit;
-    }
-
-    mnhd = (mnhd_t*)rmsg.data;
-    if (mnhd->type != MN_REP_MAC) {
-        fprintf(stderr, "%s:receive wrong type, type=%ld\n", __func__, mnhd->type);
         goto func_exit;
     }
 
@@ -974,6 +976,7 @@ void chk_online(U32 arg)
     if (0 == (strcmp("1", pd->pvalue))) {
         // fprintf(stderr, "%s,%d\n", __func__, __LINE__);
         update_local_status();
+        usleep(100000);
 #if ON_BOARD
         update_dvlp();
 #endif
@@ -1055,6 +1058,28 @@ void chk_reset(U32 arg)
         }
         gen_json(CONFIG_PATH, config_root);
         gen_json(INIT_PATH, config_root);
+#if PRINT_COMMAND
+        fprintf(stderr, "%s:reboot\n", __func__);
+#endif
+#if ON_BOARD
+        system("reboot");
+#endif
+    }
+
+    if ((pd = read_json(CONFIG_PATH, CNAME_RESTART)) == NULL) {
+        fprintf(stderr, "config.json is doubted broken\n");
+        gen_json(CONFIG_PATH, config_root);
+        goto func_exit;
+    }
+
+    if (0 == (strcmp("1", pd->pvalue))) {
+        gen_json(CONFIG_PATH, config_root);
+#if PRINT_COMMAND
+        fprintf(stderr, "%s:reboot\n", __func__);
+#endif
+#if ON_BOARD
+        system("reboot");
+#endif
     }
 
 func_exit:
@@ -1341,7 +1366,7 @@ int add_config()
         }
     }
 
-    if(wifi_mod == 1){
+    if (wifi_mod == 1) {
         config_wifi();
         wifi_mod = 0;
     }
@@ -1499,6 +1524,9 @@ void* rcv_thread(void* arg)
     pthread_detach(pthread_self());
 
     while (1) {
+
+        ser_flag = 0;
+
         for (i = 0; i < status_cnt; i++) {
             if (strcmp(status_data[i].name, CNAME_IPADDRESS) == 0) {
                 (*status_data[i].pfunc)(i, 0, NULL);
@@ -1519,34 +1547,39 @@ void* rcv_thread(void* arg)
         reqfd = socket(AF_INET, SOCK_DGRAM, 0);
         if (reqfd < 0) {
             perror("create request socket failed");
-            rval = 1;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 1;
+            // goto thread_exit;
         }
         //create information socket
         infofd = socket(AF_INET, SOCK_DGRAM, 0);
         if (infofd < 0) {
             perror("create information socket failed");
-            rval = 1;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 1;
+            // goto thread_exit;
         }
 
         //join multicast group
         if (inet_pton(AF_INET, GROUP_IP, &mreq.imr_multiaddr.s_addr) <= 0) {
             fprintf(stderr, "Wrong IP address\n");
-            rval = 2;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 2;
+            // goto thread_exit;
         }
         if (inet_pton(AF_INET, node_ip, &mreq.imr_interface.s_addr) <= 0) {
             fprintf(stderr, "Wrong IP address\n");
-            rval = 2;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 2;
+            // goto thread_exit;
         }
         //mreq.imr_interface.s_addr = INADDR_ANY;
         rval = setsockopt(reqfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(struct ip_mreq));
         if (rval < 0) {
             perror("setsockopt");
-            rval = 2;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 2;
+            // goto thread_exit;
         }
 
         //fill socket address variable
@@ -1554,8 +1587,9 @@ void* rcv_thread(void* arg)
         mserv.sin_port = htons(MUL_PORT);
         if (inet_pton(AF_INET, GROUP_IP, &mserv.sin_addr) <= 0) {
             fprintf(stderr, "Wrong IP address\n");
-            rval = 2;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 2;
+            // goto thread_exit;
         }
 
         userv.sin_family = AF_INET;
@@ -1563,21 +1597,24 @@ void* rcv_thread(void* arg)
         //fprintf(stderr, "node_ip:%s\n", node_ip);
         if (inet_pton(AF_INET, node_ip, &userv.sin_addr) <= 0) {
             fprintf(stderr, "Wrong IP address\n");
-            rval = 2;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 2;
+            // goto thread_exit;
         }
 
         //bind socket
         if (bind(reqfd, (struct sockaddr*)&mserv, sizeof(struct sockaddr)) < 0) {
             perror("bind reqfd failed");
-            rval = 3;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 3;
+            // goto thread_exit;
         }
         //sleep(1);
         if (bind(infofd, (struct sockaddr*)&userv, sizeof(struct sockaddr)) < 0) {
             perror("bind infofd failed");
-            rval = 3;
-            goto thread_exit;
+            ser_flag = 1;
+            // rval = 3;
+            // goto thread_exit;
         }
 
         sock_len = sizeof(struct sockaddr);
@@ -1586,8 +1623,6 @@ void* rcv_thread(void* arg)
         FD_ZERO(&std_rset);
         FD_SET(reqfd, &std_rset);
         FD_SET(infofd, &std_rset);
-
-        ser_flag = 0;
 
         while (!ser_flag) {
             memcpy(&rset, &std_rset, sizeof(fd_set));
@@ -1653,10 +1688,15 @@ void* rcv_thread(void* arg)
             }
         }
         fprintf(stderr, "%s: restarting server socket\n", __func__);
-        close(reqfd);
-        reqfd = -1;
-        close(infofd);
-        infofd = -1;
+        if (reqfd != -1) {
+            close(reqfd);
+            reqfd = -1;
+        }
+        if (infofd != -1) {
+            close(infofd);
+            infofd = -1;
+        }
+        usleep(500000);
     }
 
 thread_exit:

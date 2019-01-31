@@ -1,7 +1,8 @@
 {
 	"Flags": {
 		"Config": "0",
-		"Reset": "0"
+		"Reset": "0",
+		"Restart": "0"
 	},
 	"User": {
 		"name": "admin",
@@ -11,6 +12,7 @@
 		"NodeId": "4",
 		"NodeName": "2WL-1608004",
 		"MeshId": "157",
+		"SopInterval": "1000",
 		"CentreFrequency": "1395",
 		"ChannelBandwidth": "5",
 		"MCS": "255",
@@ -21,7 +23,7 @@
 		"Gateway": "192.168.0.1"
 	},
 	"Audio": {
-		"AudioMode": "1",
+		"AudioMode": "0",
 		"HeadphoneVolume": "45",
 		"MicrophoneVolume": "45",
 		"MuteThreshold": "20"
@@ -29,7 +31,7 @@
 	"Wifi":{
 		"Mode": "0",
 		"SSID": "rzxt123",
-		"APAddress": "192.168.2.100",
+		"IPAddress": "192.168.2.100",
 		"Encryption": "2",
 		"Password": "12348765",
 		"Bandwidth": "3",

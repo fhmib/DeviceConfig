@@ -93,6 +93,8 @@ int io_ipGateway(int, char, char*);
 int io_nodeId(int, char, char*);
 int io_nodeName(int, char, char*);
 int io_chanBW(int, char, char*);
+int io_meshid(int, char, char*);
+int io_sopinterval(int, char, char*);
 int io_tfci(int, char, char*);
 int io_txPower(int, char, char*);
 int io_dataRate(int, char, char*);

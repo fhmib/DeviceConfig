@@ -903,6 +903,71 @@ func_exit:
     return rval;
 }
 
+int io_meshid(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int value;
+    char* pbuf = NULL;
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        sscanf(pvalue, "%d", &value);
+        if ((value > 65535) || (value < 1)) {
+            fprintf(stderr, "%s: %d is invalid\n", __func__, value);
+            rval = 2;
+            goto func_exit;
+        }
+        pbuf = (char*)malloc(10);
+        sprintf(pbuf, " %s ", pvalue);
+        rval = modify_file(XD_INIT_PATH, "highmac $inode_id", "$inode_id", "&", pbuf);
+        if (rval) {
+            fprintf(stderr, "%s:modify_file failed, rval = %d\n", __func__, rval);
+            rval = 3;
+            goto func_exit;
+        }
+    }
+
+func_exit:
+    if (pbuf != NULL) {
+        free(pbuf);
+    }
+    return rval;
+}
+
+int io_sopinterval(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int value;
+    char* pbuf = NULL;
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        sscanf(pvalue, "%d", &value);
+        if ((value > 4000) || (value < 200)) {
+            fprintf(stderr, "%s: %d is invalid\n", __func__, value);
+            rval = 2;
+            goto func_exit;
+        }
+        pbuf = (char*)malloc(8);
+        sprintf(pbuf, " %s ", pvalue);
+        rval = modify_file(XD_INIT_PATH, "routingp $inode_id", "$inode_id", "&", pbuf);
+        if (rval) {
+            fprintf(stderr, "%s:modify_file failed, rval = %d\n", __func__, rval);
+            rval = 3;
+            goto func_exit;
+        }
+    }
+
+func_exit:
+    if (pbuf != NULL) {
+        free(pbuf);
+    }
+    return rval;
+}
 int io_tfci(int index, char mode, char* pvalue)
 {
     int rval = 0;
@@ -2420,13 +2485,19 @@ void read_route()
 
     i = 3;
     while (i--) {
-        usleep(500000);
+        usleep(100000);
         if ((len = msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)) == -1) {
             if ((i < 2) && (i >= 0)) {
                 perror("update_dvlp:msgrcv hm_state failed, try again\n");
             }
         } else {
-            break;
+            mnhd = (mnhd_t*)rmsg.data;
+            if (mnhd->type != MN_REP_ROUTE) {
+                fprintf(stderr, "%s:receive wrong type, type=%ld\n", __func__, mnhd->type);
+                continue;
+            } else {
+                break;
+            }
         }
     }
 
@@ -2436,11 +2507,6 @@ void read_route()
         goto func_exit;
     }
 
-    mnhd = (mnhd_t*)rmsg.data;
-    if (mnhd->type != MN_REP_ROUTE) {
-        fprintf(stderr, "%s:receive wrong type, type=%ld\n", __func__, mnhd->type);
-        goto func_exit;
-    }
     // fprintf(stderr, "%s:len=%d\n", __func__, len);
 
     rinfo = (route_info_t*)(rmsg.data + MNHD_LEN);
