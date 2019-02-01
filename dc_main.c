@@ -21,6 +21,7 @@ node_s* sstatus;
 node_s* sinformation;
 node_s* sdeveloper;
 node_s* ssigtable;
+node_s* ssnrtable;
 node_s* snode_data[MAX_NODE_CNT];
 
 //genernal timers for process
@@ -118,7 +119,9 @@ sdata_s dvlp_t[] = {
 int dvlp_cnt = sizeof(dvlp_t) / sizeof(dvlp_t[0]);
 
 unsigned char sigQuality_t[MAX_NODE_CNT][MAX_NODE_CNT];
+unsigned char snr_t[MAX_NODE_CNT][MAX_NODE_CNT];
 node_s* sigs[MAX_NODE_CNT];
+node_s* snrs[MAX_NODE_CNT];
 
 //for config.json
 node_s* config_root;
@@ -382,6 +385,7 @@ int init_tree()
     sflags = create_node(JSON_NORMAL, CNAME_FLAGS, NULL, 1);
     sstatus = create_node(JSON_NORMAL, CNAME_STATUS, NULL, 1);
     ssigtable = create_node(JSON_ARRAY, CNAME_SIGTABLE, NULL, 1);
+    ssnrtable = create_node(JSON_ARRAY, CNAME_SNRTABLE, NULL, 1);
     sinformation = create_node(JSON_NORMAL, CNAME_INFO, NULL, 1);
     sdeveloper = create_node(JSON_NORMAL, CNAME_DVLP, NULL, 1);
 
@@ -390,6 +394,7 @@ int init_tree()
     insert_node(status_root, sdeveloper);
     insert_node(status_root, sstatus);
     insert_node(status_root, ssigtable);
+    insert_node(status_root, ssnrtable);
 
     //initialize flags
     insert_node(sflags, create_node(JSON_STRING, CNAME_OL, "0", 1));
@@ -435,6 +440,12 @@ int init_tree()
         insert_node(ssigtable, sigs[i]);
     }
     // update_sig();
+
+    //initialize signal quality table
+    for (i = 0; i < MAX_NODE_CNT; i++) {
+        snrs[i] = create_node(JSON_CUSTOM1, NULL, NULL, 0);
+        insert_node(ssnrtable, snrs[i]);
+    }
 
     usleep(100000);
     update_local_status();
@@ -560,6 +571,8 @@ void update_sig()
     char buf[1024], temp[32];
     int i, j, na, value;
     node_s* node;
+    node_s* mtu_node;
+    node_s* snr_node;
     node_l* pl;
     char* p;
 
@@ -574,9 +587,9 @@ void update_sig()
         assert(getnumfromstr(node->name) != -1);
         // fprintf(stderr, "%s: number of the name is %d\n", __func__, getnumfromstr(node->name));
         na = getnumfromstr(node->name);
-        node = search_node(node, CNAME_MTUTABLE);
-        assert(node != NULL);
-        strcpy(buf, node->pvalue);
+        mtu_node = search_node(node, CNAME_MTUTABLE);
+        assert(mtu_node != NULL);
+        strcpy(buf, mtu_node->pvalue);
         for (p = strtok(buf, "[], "), i = 0; p != NULL; p = strtok(NULL, "[], "), i++) {
             if (i >= MAX_NODE_CNT) {
                 fprintf(stderr, "%s: i=%d is invalid\n", __func__, i);
@@ -593,6 +606,18 @@ void update_sig()
             }
             sigQuality_t[na - 1][i] = value;
         }
+
+        snr_node = search_node(node, CNAME_SNR);
+        assert(snr_node != NULL);
+        strcpy(buf, snr_node->pvalue);
+        for (p = strtok(buf, "[], "), i = 0; p != NULL; p = strtok(NULL, "[], "), i++) {
+            if (i >= MAX_NODE_CNT) {
+                fprintf(stderr, "%s: i=%d is invalid\n", __func__, i);
+            }
+            sscanf(p, "%d", &value);
+            snr_t[na - 1][i] = value;
+        }
+
         pl = pl->next;
     }
 
@@ -614,6 +639,26 @@ void update_sig()
             }
         }
         strcpy(sigs[i]->pvalue, buf);
+    }
+
+    for (i = 0; i < MAX_NODE_CNT; i++) {
+        buf[0] = 0;
+        for (j = 0; j < MAX_NODE_CNT; j++) {
+            sprintf(temp, "%u", snr_t[i][j]);
+            strcat(buf, temp);
+            if (j < MAX_NODE_CNT - 1) {
+                strcat(buf, ", ");
+            }
+        }
+        if (snrs[i]->pvalue == NULL) {
+            snrs[i]->pvalue = (char*)malloc(strlen(buf) + 1);
+        } else {
+            if (strlen(snrs[i]->pvalue) < strlen(buf)) {
+                free(snrs[i]->pvalue);
+                snrs[i]->pvalue = (char*)malloc(strlen(buf) + 1);
+            }
+        }
+        strcpy(snrs[i]->pvalue, buf);
     }
 
     return;

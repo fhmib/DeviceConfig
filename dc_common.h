@@ -107,6 +107,7 @@
 #define CNAME_DVLP                  "Developer"
 #define CNAME_INFO                  "Information"
 #define CNAME_SIGTABLE              "SignalQualityTable"
+#define CNAME_SNRTABLE              "SnrTable"
 #define CNAME_NODEHEADER            "NodeStatus"
 #define CNAME_IPSTATUS              "IpStatus"
 #define CNAME_IPTXBYTE              "IPTxBytes"
