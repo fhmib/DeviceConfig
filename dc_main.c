@@ -145,7 +145,7 @@ sdata_s config_t[] = {
     { JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_MESHID, NULL, &io_meshid, CNAME_MAIN, 1 },
-    { JSON_STRING, CNAME_SOPINT, NULL, &io_sopinterval, CNAME_MAIN, 1 },
+    // { JSON_STRING, CNAME_SOPINT, NULL, &io_sopinterval, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_FREQ, NULL, NULL, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_CHANBW, NULL, &io_chanBW, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_TFCI, NULL, &io_tfci, CNAME_MAIN, 1 },
@@ -1335,6 +1335,7 @@ int cmp_config(rdata_s* rdata)
                 if (config_t[i].pvalue == NULL) {
                     //maybe need more code
                 }
+                // fprintf(stderr, "%s,%d:name=%s, rdata->pvalue=%s, config_t.pvalue=%s\n", __func__, __LINE__, rdata->name, rdata->pvalue, config_t[i].pvalue);
                 if (strcmp(rdata->pvalue, config_t[i].pvalue) != 0) {
                     if (config_t[i].pfunc != NULL) {
                         // fprintf(stderr, "%s:configuring %s, pvalue = %s\n", __func__, config_t[i].name, rdata->pvalue);
@@ -1556,6 +1557,8 @@ void remove_status(int nodeid)
 void* rcv_thread(void* arg)
 {
     int rval = 0, i;
+    U32 seq[MAX_NODE_CNT] = { 0 };
+    char fd_flag;
     int reqfd, infofd;
     struct ip_mreq mreq;
     struct sockaddr_in mserv, userv;
@@ -1670,8 +1673,11 @@ void* rcv_thread(void* arg)
         FD_SET(infofd, &std_rset);
 
         while (!ser_flag) {
+            // fprintf(stderr, "%s:in while\n", __func__);
             memcpy(&rset, &std_rset, sizeof(fd_set));
-            tm.tv_sec = 2;
+            fd_flag = 0;
+            // tm.tv_sec = 2;
+            tm.tv_sec = 0;
             tm.tv_usec = 0;
 
             if (select(MMAX(infofd, reqfd) + 1, &rset, NULL, NULL, &tm) < 0) {
@@ -1683,6 +1689,7 @@ void* rcv_thread(void* arg)
             }
 
             if (FD_ISSET(reqfd, &rset)) {
+                fd_flag = 1;
                 recvfrom(reqfd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
                 if (pm->type == SMSG_REQ) {
                     if (pm->node == sa) {
@@ -1690,18 +1697,33 @@ void* rcv_thread(void* arg)
                         continue;
                     }
 
-                    fprintf(stderr, "recv a requst msg from node %d\n", pm->node);
+                    if (pm->seq == seq[pm->node - 1] && pm->seq != 0) {
+                        fprintf(stderr, "recv repeated request msg from node %d, seq = %u, drop it\n", pm->node, pm->seq);
+                        continue;
+                    } else {
+                        seq[pm->node - 1] = pm->seq;
+                    }
+
+                    fprintf(stderr, "recv a requst msg from node %d, seq = %u\n", pm->node, pm->seq);
                     pthread_mutex_lock(&pmutex);
                     update_local_status();
                     gen_json(STATUS_PATH, status_root);
+#if ON_BOARD
                     rval = send_info(reqfd, &cli);
+#else
+                    rval = send_info(reqfd, &cli, 1);
+                    rval = send_info(reqfd, &cli, 2);
+#endif
                     if (rval != 0) {
                         fprintf(stderr, "send info failed\n");
                     }
                     pthread_mutex_unlock(&pmutex);
+                } else {
+                    fprintf(stderr, "%s:recv a requst msg with error type\n", __func__);
                 }
             }
             if (FD_ISSET(infofd, &rset)) {
+                fd_flag = 1;
                 recvfrom(infofd, pm, SMSG_LEN, 0, (struct sockaddr*)&cli, &sock_len);
                 if (pm->type == SMSG_INFO) {
                     if (pm->node == sa) {
@@ -1729,7 +1751,13 @@ void* rcv_thread(void* arg)
                         gen_json(STATUS_PATH, status_root);
                     }
                     pthread_mutex_unlock(&pmutex);
+                } else {
+                    fprintf(stderr, "%s:recv an info msg with error type\n", __func__);
                 }
+            }
+            if (!fd_flag) {
+                usleep(500000);
+                // fprintf(stderr, "%s:sleep\n", __func__);
             }
         }
         fprintf(stderr, "%s: restarting server socket\n", __func__);
@@ -1791,6 +1819,8 @@ func_exit:
     return rval;
 }
 
+U32 req_seq = 0;
+
 void send_req()
 {
     smsg_t msg;
@@ -1801,11 +1831,17 @@ void send_req()
 #else
     msg.node = sa;
 #endif
+    msg.seq = req_seq++;
     sendto(mc_fd, &msg, SMSG_LEN - sizeof(msg.buf), 0, (struct sockaddr*)&mc_addr, sizeof(struct sockaddr));
+
+#if PRINT_COMMAND
+    fprintf(stderr, "%s:sending a request msg, seq = %u\n", __func__, msg.seq);
+#endif
 
     return;
 }
 
+#if ON_BOARD
 int send_info(int reqfd, void* cli)
 {
     smsg_t msg;
@@ -1825,6 +1861,8 @@ int send_info(int reqfd, void* cli)
     len += sizeof(msg.node);
     msg.type = SMSG_INFO;
     len += sizeof(msg.type);
+    msg.seq = 0;
+    len += sizeof(msg.seq);
 
     msg.buf[0] = 0;
     for (i = 0; i < status_cnt; i++) {
@@ -1889,10 +1927,107 @@ int send_info(int reqfd, void* cli)
     //printf("node = %-2d, type = %-2d, msg = [%s]\n", msg.node, msg.type, msg.buf);
     //sendto(reqfd, &msg, SMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
     sendto(reqfd, &msg, len, 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
+#if PRINT_COMMAND
+    fprintf(stderr, "send info msg to address:%s prot:%u\n", inet_ntoa(((struct sockaddr_in*)cli)->sin_addr), ntohs(((struct sockaddr_in*)cli)->sin_port));
+#endif
 
 func_exit:
     return rval;
 }
+#else
+int send_info(int reqfd, void* cli, int arg)
+{
+    smsg_t msg;
+    int len = 0, llen = 0, i;
+    int rval = 0;
+    char buf[1024];
+
+    ((struct sockaddr_in*)cli)->sin_port = htons(INFO_PORT);
+
+#if SOCKET_TEST
+    msg.node = sa + arg;
+    msg.node = (msg.node > MAX_NODE_CNT) ? 1 : msg.node;
+    char test[128];
+#else
+    msg.node = sa;
+#endif
+    len += sizeof(msg.node);
+    msg.type = SMSG_INFO;
+    len += sizeof(msg.type);
+    msg.seq = 0;
+    len += sizeof(msg.seq);
+
+    msg.buf[0] = 0;
+    for (i = 0; i < status_cnt; i++) {
+        // fprintf(stderr, "%s:%d: status_data's name is %s\n", __func__, __LINE__, status_data[i].name);
+        switch (status_data[i].type) {
+        case JSON_NORMAL:
+        case JSON_ARRAY:
+#if SOCKET_TEST
+            sprintf(test, CNAME_NODE "%d", (int)sa & 0x000000FF);
+            if (strcmp(test, status_data[i].name) == 0) {
+                sprintf(test, CNAME_NODE "%d", (msg.node) & 0x000000FF);
+                sprintf(buf, "%s|", test);
+            } else {
+                sprintf(buf, "%s|", status_data[i].name);
+            }
+#else
+            sprintf(buf, "%s|", status_data[i].name);
+#endif
+            llen += strlen(buf);
+            if (llen >= MAX_SOCK_LEN) {
+                rval = 1;
+                fprintf(stderr, "msg is too long\n");
+                goto func_exit;
+            }
+            strcat(msg.buf, buf);
+            break;
+        case JSON_STRING:
+            if ((status_data[i].pvalue == NULL) || (strlen(status_data[i].pvalue) == 0))
+                break;
+            sprintf(buf, "%s|", status_data[i].name);
+            llen += strlen(buf);
+            if (llen >= MAX_SOCK_LEN) {
+                rval = 1;
+                fprintf(stderr, "msg is too long\n");
+                goto func_exit;
+            }
+            strcat(msg.buf, buf);
+#if SOCKET_TEST
+            if (strcmp(CNAME_NODEID, status_data[i].name) == 0) {
+                sprintf(test, "%d", (msg.node) & 0x000000FF);
+                sprintf(buf, "%s|", test);
+            } else {
+                sprintf(buf, "%s|", status_data[i].pvalue);
+            }
+#else
+            sprintf(buf, "%s|", status_data[i].pvalue);
+#endif
+            llen += strlen(buf);
+            if (llen >= MAX_SOCK_LEN) {
+                rval = 1;
+                fprintf(stderr, "msg is too long\n");
+                goto func_exit;
+            }
+            strcat(msg.buf, buf);
+            break;
+        default:
+            break;
+        }
+    }
+    len += strlen(msg.buf) + 1;
+
+    //printf("node = %-2d, type = %-2d, msg = [%s]\n", msg.node, msg.type, msg.buf);
+    //sendto(reqfd, &msg, SMSG_LEN-sizeof(msg.buf), 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
+    sendto(reqfd, &msg, len, 0, (struct sockaddr*)cli, sizeof(struct sockaddr));
+#if PRINT_COMMAND
+    fprintf(stderr, "send info msg to address:%s prot:%u\n", inet_ntoa(((struct sockaddr_in*)cli)->sin_addr), ntohs(((struct sockaddr_in*)cli)->sin_port));
+#endif
+
+func_exit:
+    return rval;
+}
+#endif
 
 //abandoned
 void update_time(int addr, int value)

@@ -31,24 +31,29 @@
 #define U32                         unsigned int
 #define U64                         unsigned long long
 
-#define ON_BOARD                    0
+#define ON_BOARD                    1
 #define PRINT_COMMAND               1
-#define SOCKET_TEST                 1       //means local test, it will send socket with msg.node=(sa+1)
+#define SOCKET_TEST                 0       //means local test, it will send socket with msg.node=(sa+1)
 
 #define IPSTAT_FREQ                 3
 
 #if ON_BOARD
 #define STATUS_PATH                 "/etc/boa/status.json"
 #define CONFIG_PATH                 "/etc/boa/config.json"
+#define INIT_PATH                   "/home/rzxt_mesh/aaf0216/init.json"
+#define DEFAULT_PATH                "/home/rzxt_mesh/aaf0216/default.json"
+#define XD_INIT_PATH                "/home/rzxt_mesh/aaf0216/init.sh"
+#define XD_CONFIG_PATH              "/home/rzxt_mesh/aaf0216/config.ini"
+#define INFO_PATH                   "/home/rzxt_mesh/aaf0216/devinfo"
 #else
 #define STATUS_PATH                 "status.json"
 #define CONFIG_PATH                 "config.json"
-#endif
 #define INIT_PATH                   "init.json"
 #define DEFAULT_PATH                "default.json"
 #define XD_INIT_PATH                "init.sh"
 #define XD_CONFIG_PATH              "config.ini"
 #define INFO_PATH                   "devinfo"
+#endif
 
 #define UART0_PATH                  "/dev/ttyPS1"
 #define NET_PATH                    "/proc/net/dev"
@@ -257,6 +262,7 @@ typedef enum {
 typedef struct _smsg_t {
     U8 type;
     U8 node;
+    U32 seq;
     char buf[MAX_SOCK_LEN];
 } smsg_t;
 #define SMSG_LEN sizeof(smsg_t)
@@ -401,7 +407,11 @@ void remove_status(int);
 void* rcv_thread(void*);
 int dc_init();
 void send_req();
+#if ON_BOARD
 int send_info(int, void*);
+#else
+int send_info(int, void*, int);
+#endif
 void update_time(int, int);
 int update_node_status(int, char*);
 int stat2tree(node_s*, sdata_s*);

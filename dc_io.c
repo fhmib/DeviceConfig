@@ -883,6 +883,7 @@ func_exit:
     return rval;
 }
 
+#if 1
 int io_chanBW(int index, char mode, char* pvalue)
 {
     int rval = 0;
@@ -894,7 +895,46 @@ int io_chanBW(int index, char mode, char* pvalue)
         rval = modify_ini(XD_CONFIG_PATH, "BANDW", pvalue);
         if (rval) {
             fprintf(stderr, "%s:modify_ini failed, rval = %d\n", __func__, rval);
+        }
+    }
+
+func_exit:
+    return rval;
+}
+
+#else
+
+int io_chanBW(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int value;
+    char buf[8];
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        sscanf(pvalue, "%d", &value);
+
+        switch (value) {
+        case 0:
+            strcpy(buf, "2.5");
+            break;
+        case 1:
+            strcpy(buf, "5");
+            break;
+        case 2:
+            strcpy(buf, "10");
+            break;
+        default:
             rval = 2;
+            goto func_exit;
+        }
+
+        rval = modify_ini(XD_CONFIG_PATH, "BANDW", buf);
+        if (rval) {
+            fprintf(stderr, "%s:modify_ini failed, rval = %d\n", __func__, rval);
+            rval = 3;
             goto func_exit;
         }
     }
@@ -902,6 +942,7 @@ int io_chanBW(int index, char mode, char* pvalue)
 func_exit:
     return rval;
 }
+#endif
 
 int io_meshid(int index, char mode, char* pvalue)
 {
@@ -2520,7 +2561,7 @@ void read_route()
         rtable.rssi[2 * i + 1] = rinfo->phy.rssi[2 * i + 1];
     }
 
-    print_rtable();
+    // print_rtable();
 
 func_exit:
     return;
