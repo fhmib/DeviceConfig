@@ -108,7 +108,7 @@ sdata_s dvlp_t[] = {
     { JSON_STRING, CNAME_B2LNUM, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_BBSFNUM, NULL, NULL, CNAME_NULL, 1 },
     // { JSON_STRING, CNAME_LMRETX, NULL, NULL, CNAME_NULL, 1 },
-    { JSON_STRING, CNAME_TXFAIL, NULL, NULL, CNAME_NULL, 1 },
+    // { JSON_STRING, CNAME_TXFAIL, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_FORWARD, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_MAXTXBYTE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_ACTUALTXBYTE, NULL, NULL, CNAME_NULL, 1 },
@@ -145,7 +145,7 @@ sdata_s config_t[] = {
     { JSON_STRING, CNAME_NODEID, NULL, &io_nodeId, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_MESHID, NULL, &io_meshid, CNAME_MAIN, 1 },
-    // { JSON_STRING, CNAME_SOPINT, NULL, &io_sopinterval, CNAME_MAIN, 1 },
+    { JSON_STRING, CNAME_SOPINT, NULL, &io_sopinterval, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_FREQ, NULL, NULL, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_CHANBW, NULL, &io_chanBW, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_TFCI, NULL, &io_tfci, CNAME_MAIN, 1 },
@@ -225,7 +225,7 @@ extern void* g_FPGA_pntr;
 int main(int argc, char* argv[])
 {
     sigset_t t_set;
-    pthread_t tm_tid, rcv_tid, gps_tid;
+    pthread_t tm_tid, rcv_tid, gps_tid, msg_tid;
 
 #if 0
     if(argc < 2){
@@ -274,6 +274,7 @@ int main(int argc, char* argv[])
     pthread_create(&tm_tid, NULL, timer_thread, &t_set);
     pthread_create(&rcv_tid, NULL, rcv_thread, NULL);
     pthread_create(&gps_tid, NULL, gps_thread, NULL);
+    pthread_create(&msg_tid, NULL, msg_thread, NULL);
 
     while (1) {
         sleep(10);
@@ -707,7 +708,7 @@ void update_dvlp()
     i = 3;
     while (i--) {
         usleep(100000);
-        if (-1 == msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)) {
+        if (-1 == msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_INTER_MAC, IPC_NOWAIT)) {
             if ((i < 2) && (i >= 0)) {
                 perror("update_dvlp:msgrcv hm_state failed, try again\n");
             }
@@ -2328,7 +2329,13 @@ void* gps_thread(void* arg)
                                 break;
                             }
                             //printf("444:%s\n", p);
-                            strcpy(gpgsa[index], p);
+                            if (index == 1) {
+                                // fprintf(stderr, "%s:gps_type:%s\n", __func__, gpgsa[index]);
+                                if (strlen(p) <= 1)
+                                    strcpy(gpgsa[index], p);
+                            } else {
+                                strcpy(gpgsa[index], p);
+                            }
                             index++;
                             break;
                         case 5:
@@ -2411,4 +2418,41 @@ void print_sdata()
     }
 
     return;
+}
+
+void* msg_thread(void* arg)
+{
+    int rval = 0;
+    int len;
+    mnhd_t* mnhd;
+    mmsg_t rmsg;
+
+    pthread_detach(pthread_self());
+
+    while (1) {
+        if ((len = msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, 0)) == -1) {
+            error("msg_thread");
+            continue;
+        }
+#if PRINT_COMMAND
+        fprintf(stderr, "%s:recv a msg from mnconf\n", __func__);
+#endif
+        mnhd = (mnhd_t*)rmsg.data;
+        switch (mnhd->type) {
+        case MN_REP_MAC:
+            rmsg.mtype = MMSG_INTER_MAC;
+            msgsnd(dc_qid, &rmsg, len, 0);
+            break;
+        case MN_REP_ROUTE:
+            rmsg.mtype = MMSG_INTER_ROUTE;
+            msgsnd(dc_qid, &rmsg, len, 0);
+            break;
+        default:
+            fprintf(stderr, "%s:unknown message type\n", __func__);
+            break;
+        }
+    }
+
+thread_exit:
+    pthread_exit((void*)&rval);
 }

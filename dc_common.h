@@ -92,6 +92,9 @@
 #define MN_REP_MAC                  21002
 #define MN_REP_ROUTE                21003
 
+#define MMSG_INTER_MAC              2201
+#define MMSG_INTER_ROUTE            2202
+
 #define MAX_SOCK_LEN                8192
 #define MAX_MSG_LEN                 8192
 #define MUL_PORT                    9000
@@ -417,6 +420,7 @@ int update_node_status(int, char*);
 int stat2tree(node_s*, sdata_s*);
 void* gps_thread(void*);
 void print_sdata();
+void* msg_thread(void*);
 
 int gen_json(const char*, node_s*);
 void first_tree(FILE*, int, node_s*);

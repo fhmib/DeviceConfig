@@ -36,7 +36,8 @@ extern char route_flag[];
 char buf_capvol[] = "/home/bin/amixer cset numid=90,iface=MIXER,name='Capture Volume' ";
 char buf_playvol[] = "/home/bin/amixer cset numid=108,iface=MIXER,name='Lineout Playback Volume' ";
 char buf_alcvol[] = "/home/bin/amixer cset numid=102,iface=MIXER,name='ALC Capture Noise Gate Threshold Volume' ";
-char buf_audio[] = "/home/rzxt_mesh/aaf0216/";
+// char buf_audio[] = "/home/rzxt_mesh/aaf0216/";
+char buf_audio[] = "/home/web/audio_enable.sh";
 
 //for configure uart
 int name_arr[] = { 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300 };
@@ -883,10 +884,12 @@ func_exit:
     return rval;
 }
 
-#if 1
+#if 0
 int io_chanBW(int index, char mode, char* pvalue)
 {
     int rval = 0;
+    int value;
+    char buf[8];
 
     if (mode == 0) {
         rval = 1;
@@ -895,13 +898,14 @@ int io_chanBW(int index, char mode, char* pvalue)
         rval = modify_ini(XD_CONFIG_PATH, "BANDW", pvalue);
         if (rval) {
             fprintf(stderr, "%s:modify_ini failed, rval = %d\n", __func__, rval);
+            rval = 3;
+            goto func_exit;
         }
     }
 
 func_exit:
     return rval;
 }
-
 #else
 
 int io_chanBW(int index, char mode, char* pvalue)
@@ -1194,6 +1198,7 @@ int io_dataWidth(int index, char mode, char* pvalue)
     } else {
         //fprintf(stderr, "%s:%d\n", __func__, i);
         sscanf(pvalue, "%d", &value);
+        value += 5;
         if (value < 5 || value > 8) {
             rval = 2;
             goto func_exit;
@@ -1221,7 +1226,8 @@ int io_stopBit(int index, char mode, char* pvalue)
     } else {
         //fprintf(stderr, "%s:%d\n", __func__, i);
         sscanf(pvalue, "%d", &value);
-        if (value < 0 || value > 2) {
+        value += 1;
+        if (value < 1 || value > 2) {
             rval = 2;
             goto func_exit;
         }
@@ -1298,7 +1304,8 @@ int io_audioEnable(int index, char mode, char* pvalue)
     } else if (mode == 2) {
         sscanf(pvalue, "%d", &value);
         if (value != 0) {
-            sprintf(buf, "%s" AUDIO_NAME " %d &", buf_audio, sa);
+            // sprintf(buf, "%s" AUDIO_NAME " %d &", buf_audio, sa);
+            sprintf(buf, "%s %d", buf_audio, sa);
             // usleep(100000);
 
 #if PRINT_COMMAND
@@ -1321,7 +1328,8 @@ int io_audioEnable(int index, char mode, char* pvalue)
     } else if (mode == 1) {
         sscanf(pvalue, "%d", &value);
         if (value != 0) {
-            sprintf(buf, "%s" AUDIO_NAME " %d &", buf_audio, sa);
+            // sprintf(buf, "%s" AUDIO_NAME " %d &", buf_audio, sa);
+            sprintf(buf, "%s %d", buf_audio, sa);
             // usleep(100000);
 
 #if PRINT_COMMAND
@@ -1468,7 +1476,9 @@ int update_wifi()
     int enc;
     int i, i_wifi;
     char* file_path = NULL;
-    char *pssid, *pip, *ppw, *pch, *pbw, *ptp;
+    char *pssid, *pip, *ppw, *pch, *ptp;
+    int bw;
+    char bw_buf[8];
 
     file_path = (char*)malloc(64);
 
@@ -1482,7 +1492,9 @@ int update_wifi()
         } else if (strcmp(config_t[i].name, CNAME_WIFICHAN) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
             pch = config_t[i].pvalue;
         } else if (strcmp(config_t[i].name, CNAME_WIFIBW) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
-            pbw = config_t[i].pvalue;
+            sscanf(config_t[i].pvalue, "%d", &bw);
+            bw++;
+            sprintf(bw_buf, "%d", bw);
         } else if (strcmp(config_t[i].name, CNAME_WIFITXPOWER) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
             ptp = config_t[i].pvalue;
         } else if (strcmp(config_t[i].name, CNAME_WIFIENCRY) == 0 && strcmp(config_t[i].fname, CNAME_WIFI) == 0) {
@@ -1535,13 +1547,13 @@ int update_wifi()
     modify_file(WIFI_PATH_AP, "start_ap.sh ", "start_ap.sh ", NULL, file_path);
 
     //update channel
-    if (strcmp(pbw, "2") == 0) {
+    if (strcmp(bw_buf, "2") == 0) {
         modify_value(&pch, "1");
     }
     modify_file(WIFI_PATH_AP, "iwconfig " WIFI_NAME " channel", "channel ", NULL, pch);
 
     //update bandwidth
-    modify_file(WIFI_PATH_SAP, "set_htconf ", "set_htconf ", NULL, pbw);
+    modify_file(WIFI_PATH_SAP, "set_htconf ", "set_htconf ", NULL, bw_buf);
 
     //update tx power
     sscanf(ptp, "%d", &value);
@@ -1769,17 +1781,18 @@ int modify_file(const char* file_path, const char* p_kw, const char* p_head, con
     str = (char*)malloc(len + 1);
     strcpy(str, p_str);
 
-    size = file_size(file_path);
-    len = size + strlen(p_str) + 1;
-    file_tmp = (char*)malloc(len);
-    file_tmp[0] = 0;
-
     //open file
     fp = fopen(file_path, "r");
     if (fp == NULL) {
         rval = 6;
+        fprintf(stderr, "%s:open %s failed\n", __func__, file_path);
         goto func_exit;
     }
+
+    size = file_size(file_path);
+    len = size + strlen(p_str) + 1;
+    file_tmp = (char*)malloc(len);
+    file_tmp[0] = 0;
 
     //read file and insert string
     while (!feof(fp)) {
@@ -1965,9 +1978,11 @@ int config_uart(int which)
             } else if ((strcmp(config_t[i].name, CNAME_UARTDATAWIDTH) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 //fprintf(stderr, "%s\n", config_t[i].pvalue);
                 sscanf(config_t[i].pvalue, "%d", &dataw);
+                dataw += 5;
             } else if ((strcmp(config_t[i].name, CNAME_UARTSTOP) == 0) && (strcmp(config_t[i].fname, CNAME_DATAPORT0) == 0)) {
                 //fprintf(stderr, "%s\n", config_t[i].pvalue);
                 sscanf(config_t[i].pvalue, "%d", &stopb);
+                stopb += 1;
             }
         }
         break;
@@ -2527,9 +2542,9 @@ void read_route()
     i = 3;
     while (i--) {
         usleep(100000);
-        if ((len = msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_MN_GUIOUT, IPC_NOWAIT)) == -1) {
+        if ((len = msgrcv(dc_qid, &rmsg, MAX_MSG_LEN, MMSG_INTER_ROUTE, IPC_NOWAIT)) == -1) {
             if ((i < 2) && (i >= 0)) {
-                perror("update_dvlp:msgrcv hm_state failed, try again\n");
+                perror("read_route:msgrcv route failed, try again\n");
             }
         } else {
             mnhd = (mnhd_t*)rmsg.data;
@@ -2544,7 +2559,7 @@ void read_route()
 
     //recv failed
     if (i < 0) {
-        fprintf(stderr, "%s:error! msgrcv hm_state failed\n", __func__);
+        fprintf(stderr, "%s:error! msgrcv route failed\n", __func__);
         goto func_exit;
     }
 

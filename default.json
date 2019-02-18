@@ -14,7 +14,7 @@
 		"MeshId": "157",
 		"SopInterval": "1000",
 		"CentreFrequency": "1395",
-		"ChannelBandwidth": "5",
+		"ChannelBandwidth": "1",
 		"MCS": "255",
 		"TxPower": "5",
 		"MimoMode": "0",
@@ -34,7 +34,7 @@
 		"IPAddress": "192.168.2.100",
 		"Encryption": "2",
 		"Password": "12348765",
-		"Bandwidth": "3",
+		"Bandwidth": "2",
 		"Channel": "1",
 		"TxPower": "18"
 	},
@@ -42,12 +42,12 @@
 		"SerialPort0": {
 			"BaudRate": "0",
 			"Parity": "0",
-			"DataWidth": "8",
-			"StopBits": "1"
+			"DataWidth": "3",
+			"StopBits": "0"
 		}
 	},
 	"GPS": {
-		"GPSMode": "1"
+		"GPSMode": "0"
 	},
 	"StaticRoute": {
 		"StaticRoute0": {
