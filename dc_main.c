@@ -57,9 +57,9 @@ sdata_s status_data[] = {
     { JSON_STRING, CNAME_IPADDRESS, NULL, &io_ipAddress, CNAME_NODEHEADER, 1 },
     { JSON_STRING, CNAME_MTUTABLE, NULL, &io_getMtu, CNAME_NODEHEADER, 0 },
     { JSON_STRING, CNAME_SNR, NULL, &io_getSnr, CNAME_NODEHEADER, 0 },
-    { JSON_STRING, CNAME_NOISE0, NULL, &io_getNoise0, CNAME_NODEHEADER, 0 },
-    { JSON_STRING, CNAME_NOISE1, NULL, &io_getNoise1, CNAME_NODEHEADER, 0 },
-    { JSON_STRING, CNAME_DISTANCE, NULL, &io_getDistance, CNAME_NODEHEADER, 0 },
+    // { JSON_STRING, CNAME_NOISE0, NULL, &io_getNoise0, CNAME_NODEHEADER, 0 },
+    // { JSON_STRING, CNAME_NOISE1, NULL, &io_getNoise1, CNAME_NODEHEADER, 0 },
+    // { JSON_STRING, CNAME_DISTANCE, NULL, &io_getDistance, CNAME_NODEHEADER, 0 },
     { JSON_STRING, CNAME_RSSI0, NULL, &io_getRSSI0, CNAME_NODEHEADER, 0 },
     { JSON_STRING, CNAME_RSSI1, NULL, &io_getRSSI1, CNAME_NODEHEADER, 0 },
     { JSON_NORMAL, CNAME_IPSTATUS, NULL, NULL, CNAME_NOTDEF, 1 },
@@ -101,6 +101,7 @@ int info_cnt = sizeof(info_t) / sizeof(info_t[0]);
 sdata_s dvlp_t[] = {
     { JSON_STRING, CNAME_TBS, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_UPS, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_DISTANCE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_CLOCK, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_NETSTATUS, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_SLOTCNT, NULL, NULL, CNAME_NULL, 1 },
@@ -110,8 +111,11 @@ sdata_s dvlp_t[] = {
     // { JSON_STRING, CNAME_LMRETX, NULL, NULL, CNAME_NULL, 1 },
     // { JSON_STRING, CNAME_TXFAIL, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_FORWARD, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_FORBYTES, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_MAXTXBYTE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_ACTUALTXBYTE, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_HMSENDNUM, NULL, NULL, CNAME_NULL, 1 },
+    { JSON_STRING, CNAME_HMSUCCNUM, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_VMODE, NULL, NULL, CNAME_NULL, 1 },
     { JSON_STRING, CNAME_FSTABLE, NULL, NULL, CNAME_NULL, 0 },
     { JSON_STRING, CNAME_DSTABLE, NULL, NULL, CNAME_NULL, 0 },
@@ -146,7 +150,7 @@ sdata_s config_t[] = {
     { JSON_STRING, CNAME_NODENAME, NULL, &io_nodeName, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_MESHID, NULL, &io_meshid, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_SOPINT, NULL, &io_sopinterval, CNAME_MAIN, 1 },
-    { JSON_STRING, CNAME_FREQ, NULL, NULL, CNAME_MAIN, 1 },
+    { JSON_STRING, CNAME_FREQ, NULL, &io_frequency, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_CHANBW, NULL, &io_chanBW, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_TFCI, NULL, &io_tfci, CNAME_MAIN, 1 },
     { JSON_STRING, CNAME_TXPOWER, NULL, &io_txPower, CNAME_MAIN, 1 },
@@ -853,6 +857,18 @@ void update_dvlp()
                     strcat(buf, temp);
                 }
             }
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_HMSENDNUM) == 0) {
+            sprintf(buf, "%u", hm_state->hsendnum);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_HMSUCCNUM) == 0) {
+            sprintf(buf, "%u", hm_state->hrevnum);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_DISTANCE) == 0) {
+            sprintf(buf, "%d", (int)hm_state->ldst);
+            modify_value(&dvlp_t[i].pvalue, buf);
+        } else if (strcmp(dvlp_t[i].name, CNAME_FORBYTES) == 0) {
+            sprintf(buf, "%u", hm_state->laafbytes);
             modify_value(&dvlp_t[i].pvalue, buf);
         }
     }

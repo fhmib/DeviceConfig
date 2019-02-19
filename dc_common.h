@@ -232,12 +232,15 @@
 #define CNAME_VMODE                 "MCSMode"
 #define CNAME_FSTABLE               "FixedSlots"
 #define CNAME_DSTABLE               "DynamicSlots"
+#define CNAME_FORBYTES              "ForwardingBytes"
+#define CNAME_DISTANCE              "Distance"
+#define CNAME_HMSENDNUM             "HMSendingNum"
+#define CNAME_HMSUCCNUM             "HMSuccessNum"
 
 #define CNAME_MTUTABLE              "TfciTable"
 #define CNAME_SNR                   "SNR"
-#define CNAME_NOISE0                "Noise0"
-#define CNAME_NOISE1                "Noise1"
-#define CNAME_DISTANCE              "Distance"
+// #define CNAME_NOISE0                "Noise0"
+// #define CNAME_NOISE1                "Noise1"
 #define CNAME_RSSI0                 "RSSI0"
 #define CNAME_RSSI1                 "RSSI1"
 
@@ -362,6 +365,7 @@ typedef struct _timers_s {
     tproc_t procs[32];
 } timers_s;
 
+//sync to hm_common.h of highmac
 typedef struct _mac_state {
     U16 rfnt;
     U8 sta;
@@ -379,6 +383,10 @@ typedef struct _mac_state {
     U16 laafnum; /* lowmac aaf num 2019 01 14 */
     U16 ltxmaxlen; /* lowmac tx max len(bytes number) 2019 01 14 */
     U16 ltxinresultlen; /* lowmac tx len(bytes number)in result 2019 01 14 */
+    U32 hsendnum;
+    U32 hrevnum;
+    U32 laafbytes;
+    U32 ldst;
     U8 dsmap[55];
     U8 vmode;
 } mac_state;

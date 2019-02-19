@@ -184,7 +184,7 @@ int io_getNoise0(int index, char mode, char* pvalue)
     if (mode == 0) {
         sprintf(buf, "[");
         for (i = 0; i < MAX_NODE_CNT; i++) {
-            sprintf(temp, "%d%s", rtable.floor_noise[2 * i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            sprintf(temp, "%u%s", rtable.floor_noise[2 * i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
             strcat(buf, temp);
         }
         // fprintf(stderr, "%s:%s\n", __func__, buf);
@@ -207,7 +207,7 @@ int io_getNoise1(int index, char mode, char* pvalue)
     if (mode == 0) {
         sprintf(buf, "[");
         for (i = 0; i < MAX_NODE_CNT; i++) {
-            sprintf(temp, "%d%s", rtable.floor_noise[2 * i + 1], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            sprintf(temp, "%u%s", rtable.floor_noise[2 * i + 1], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
             strcat(buf, temp);
         }
         // fprintf(stderr, "%s:%s\n", __func__, buf);
@@ -230,7 +230,7 @@ int io_getDistance(int index, char mode, char* pvalue)
     if (mode == 0) {
         sprintf(buf, "[");
         for (i = 0; i < MAX_NODE_CNT; i++) {
-            sprintf(temp, "%d%s", rtable.distance[i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            sprintf(temp, "%u%s", rtable.distance[i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
             strcat(buf, temp);
         }
         // fprintf(stderr, "%s:%s\n", __func__, buf);
@@ -253,7 +253,7 @@ int io_getRSSI0(int index, char mode, char* pvalue)
     if (mode == 0) {
         sprintf(buf, "[");
         for (i = 0; i < MAX_NODE_CNT; i++) {
-            sprintf(temp, "%d%s", rtable.rssi[2 * i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            sprintf(temp, "%d%s", (int)rtable.rssi[i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
             strcat(buf, temp);
         }
         // fprintf(stderr, "%s:%s\n", __func__, buf);
@@ -276,7 +276,7 @@ int io_getRSSI1(int index, char mode, char* pvalue)
     if (mode == 0) {
         sprintf(buf, "[");
         for (i = 0; i < MAX_NODE_CNT; i++) {
-            sprintf(temp, "%d%s", rtable.rssi[2 * i + 1], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
+            sprintf(temp, "%d%s", (int)rtable.rssi[MAX_NODE_CNT + i], (i == MAX_NODE_CNT - 1) ? "]" : ", ");
             strcat(buf, temp);
         }
         // fprintf(stderr, "%s:%s\n", __func__, buf);
@@ -1013,6 +1013,66 @@ func_exit:
     }
     return rval;
 }
+
+int io_frequency(int index, char mode, char* pvalue)
+{
+    int rval = 0;
+    int f_idx;
+
+    if (mode == 0) {
+        rval = 1;
+        goto func_exit;
+    } else {
+        //				         1615  1616  1617  1618  1619  1620  1621  1622  1623  1624  1625
+        static int reg_23B[] = { 0xAC, 0xAC, 0xAC, 0xAC, 0xAC, 0xAC, 0xAB, 0xAB, 0xAB, 0xAB, 0xAB };
+        static int reg_27B[] = { 0xAC, 0xAC, 0xAC, 0xAC, 0xAC, 0xAC, 0xAB, 0xAB, 0xAB, 0xAB, 0xAB };
+        static int reg_233[] = { 0x97, 0x06, 0x75, 0xE5, 0x54, 0xC4, 0x33, 0xA3, 0xA3, 0x82, 0x00 };
+        static int reg_234[] = { 0x99, 0xD7, 0x14, 0x51, 0x8F, 0xCC, 0x0A, 0x47, 0x47, 0xC2, 0x00 };
+        static int reg_235[] = { 0x19, 0x23, 0x2E, 0x38, 0x42, 0x4C, 0x57, 0x61, 0x61, 0x75, 0x00 };
+        static int reg_232[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+        static int reg_231[] = { 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x82 };
+        static int reg_273[] = { 0x97, 0x06, 0x75, 0xE5, 0x54, 0xC4, 0x33, 0xA3, 0xA3, 0x82, 0x00 };
+        static int reg_274[] = { 0x99, 0xD7, 0x14, 0x51, 0x8F, 0xCC, 0x0A, 0x47, 0x47, 0xC2, 0x00 };
+        static int reg_275[] = { 0x19, 0x23, 0x2E, 0x38, 0x42, 0x4C, 0x57, 0x61, 0x61, 0x75, 0x00 };
+        static int reg_272[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+        static int reg_271[] = { 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x82 };
+
+        sscanf(pvalue, "%d", &f_idx);
+        f_idx = ((f_idx < 0) ? 0 : ((f_idx > 10) ? 10 : f_idx));
+#if PRINT_COMMAND
+        fprintf(stderr, "%s: configuring freqency, f_idx=%d\n", __func__, f_idx);
+#endif
+
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x23B << 2), reg_23B[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x27B << 2), reg_27B[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x233 << 2), reg_233[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x234 << 2), reg_234[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x235 << 2), reg_235[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x232 << 2), reg_232[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x231 << 2), reg_231[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x273 << 2), reg_273[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x274 << 2), reg_274[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x275 << 2), reg_275[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x272 << 2), reg_272[f_idx]);
+        usleep(20);
+        drvFPGA_Write(AD9361_BASE_ADDR + (0x271 << 2), reg_271[f_idx]);
+        usleep(20);
+    }
+
+func_exit:
+    return rval;
+}
+
 int io_tfci(int index, char mode, char* pvalue)
 {
     int rval = 0;
@@ -2605,7 +2665,7 @@ void print_rtable()
     }
     printf("rssi: ");
     for (i = 0; i < MAX_NODE_CNT * 2; i++) {
-        printf("%u%s", rtable.rssi[i], (i != 2 * MAX_NODE_CNT - 1) ? ", " : "\n");
+        printf("%d%s", (int)rtable.rssi[i], (i != 2 * MAX_NODE_CNT - 1) ? ", " : "\n");
     }
     printf("<---------- end  ---------->\n");
 

@@ -13,6 +13,7 @@
 
 #pragma pack(1)
 
+//sync to rp_cost.h of routingp
 typedef struct _cost_t {
     U8 mtu;
     U16 queue_len;
@@ -31,6 +32,7 @@ typedef struct _ctable_t {
 
 #pragma pack()
 
+//sync to rp_cost.h of routingp
 typedef struct _phy_info_t {
     U32 floor_noise[2 * MAX_NODE_CNT];
     U32 distance[MAX_NODE_CNT];
@@ -95,6 +97,7 @@ int io_nodeName(int, char, char*);
 int io_chanBW(int, char, char*);
 int io_meshid(int, char, char*);
 int io_sopinterval(int, char, char*);
+int io_frequency(int, char, char*);
 int io_tfci(int, char, char*);
 int io_txPower(int, char, char*);
 int io_dataRate(int, char, char*);
